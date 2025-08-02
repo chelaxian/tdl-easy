@@ -16,7 +16,7 @@ PowerShell script to simplify downloading Telegram media from private groups/cha
 ## Interactive wizard view
 
 ```powershell
-PS C:\Telegram\tdl> .\tdl-updater.ps1
+PS C:\Users\admin\Desktop\tdl> .\tdl-updater.ps1
 
 ╔════════════════════ TDL PATH CONFIGURATION ════════════════════════════════╗
 ║ Default: C:\Users\admin\Desktop\tdl

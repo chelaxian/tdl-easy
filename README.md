@@ -1,9 +1,7 @@
 # tdl-easy (windows x64 only)
 
-## Description
-powershell script to make it easy downloading Telegram media from private group/channels without public link
-with this script you only need to know URL to any message in private Telegram group/channel.
-just provide to script message index range (for ex. from 1 to 1000) and it will download all media from 1 to 1000 messages.
+PowerShell script to simplify downloading Telegram media from private groups/channels without a public link. You only need the URL to any message in the private Telegram group/channel. Specify the message index range (например, с 1 до 1000), и скрипт скачает все медиа из этих сообщений.
+
 ---
 
 ## Getting started

@@ -10,7 +10,7 @@ $tdlExe = Join-Path $tdlPath 'tdl.exe'
 # Function to get the latest version from GitHub
 function Get-LatestVersion {
     try {
-        $response = Invoke-WebRequest -Uri $latestReleaseUrl -UseBasicParsing -ErrorAction Stop
+        $response = Invoke-WebRequest -Uri $latestReleaseUrl -ErrorAction Stop
         $latestVersion = ($response.BaseResponse.ResponseUri -split '/' | Select-Object -Last 1)
         return $latestVersion  # Includes leading 'v'
     } catch {
@@ -120,7 +120,7 @@ if ($needUpdate -and $latestVersion) {
     if (-not $success) {
         Write-Error "❌ Update failed."
     } else {
-        Write-Host "✅ Update process finished." 
+        Write-Host "✅ Update process finished."
     }
 } elseif ($needUpdate -and -not $latestVersion) {
     # Try fallback to currentVersion if latest unknown

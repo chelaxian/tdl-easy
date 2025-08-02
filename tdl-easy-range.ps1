@@ -145,23 +145,48 @@ if (-not $useSaved) {
         } while ($true)
         Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
 
-        # Telegram URL
+        # Telegram base URL input (only two forms allowed: internal numeric c/ or public username)
         do {
             Write-Host "";
             Write-Host "╔════════════════════ TELEGRAM URL CONFIGURATION ════════════════════════════╗" -ForegroundColor DarkGray
-            Write-Host "║ Example: https://t.me/c/12345678/ (only this format is accepted)" -ForegroundColor Gray
+            Write-Host "║ Examples: https://t.me/c/12345678/ or https://t.me/abc/ (without message index)" -ForegroundColor Gray
             Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
-            Write-Host "Copy-Paste group/channel any message base URL without message index in the end" 
+            Write-Host "Enter base Telegram channel/group URL (no message index), e.g., https://t.me/c/12345678/ or https://t.me/username/"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
                 Write-Host "🔴 Error: URL cannot be empty." -ForegroundColor Red
                 continue
             }
             if (-not $input.EndsWith("/")) { $input = "$input/" }
-            if ($input -notmatch '^https?://t\.me/(?:(?:c/\d+/\d+)|(?:s/[A-Za-z0-9_]{5,32}/\d+)|(?:[A-Za-z0-9_]{5,32}/\d+))/?$') {
-                Write-Host "🔴 Error: URL must be of form https://t.me/c/12345678/123 or https://t.me/abc/123." -ForegroundColor Red
+
+            try {
+                $parsedUri = [uri]$input
+            } catch {
+                Write-Host "🔴 Error: Invalid URL format." -ForegroundColor Red
                 continue
             }
+
+            if ($parsedUri.Scheme -notin @('http', 'https') -or $parsedUri.Host -ne 't.me') {
+                Write-Host "🔴 Error: URL must be https://t.me/..." -ForegroundColor Red
+                continue
+            }
+
+            $segments = $parsedUri.AbsolutePath.Trim('/').Split('/')
+            $isValidBase = $false
+
+            if ($segments.Length -eq 1 -and $segments[0] -match '^[A-Za-z0-9_]{5,32}$') {
+                # public username
+                $isValidBase = $true
+            } elseif ($segments.Length -eq 2 -and $segments[0] -eq 'c' -and $segments[1] -match '^\d+$') {
+                # internal channel base
+                $isValidBase = $true
+            }
+
+            if (-not $isValidBase) {
+                Write-Host "🔴 Error: URL должен быть https://t.me/c/12345678/ или https://t.me/username/." -ForegroundColor Red
+                continue
+            }
+
             $telegramUrl = $input
             break
         } while ($true)
@@ -274,23 +299,30 @@ $logFile = "${tdl_path}\download_log.txt"
 $processedFile = "${mediaDir}\processed.txt"
 $errorFile = "${mediaDir}\error_index.txt"
 
-# Extract channel ID from URL
-$channelId = $null
+# Extract channel identifier (internal numeric or public username) from base URL
+$channelIdentifier = $null
 if ($telegramUrl -match '^https?://t\.me/c/(\d+)/$') {
-    $channelId = $Matches[1]
+    $channelIdentifier = $Matches[1]
+} elseif ($telegramUrl -match '^https?://t\.me/([A-Za-z0-9_]{5,32})/$') {
+    $channelIdentifier = $Matches[1].ToLowerInvariant()
 }
-if ([string]::IsNullOrWhiteSpace($channelId)) {
-    Write-Host "🔴 Error: Failed to extract channel ID from URL: $telegramUrl" -ForegroundColor Red
+
+if ([string]::IsNullOrWhiteSpace($channelIdentifier)) {
+    Write-Host "🔴 Error: Failed to extract channel/group identifier from URL: $telegramUrl" -ForegroundColor Red
     while ($true) {
-        $resp = Read-Host "Enter Telegram URL again in form https://t.me/c/12345678/ or type 'quit' to exit"
+        $resp = Read-Host "Enter the base Telegram link again (https://t.me/c/12345678/ or https://t.me/username/) or 'quit' to exit"
         if ($resp -eq 'quit') { exit }
         if (-not $resp.EndsWith("/")) { $resp = "$resp/" }
         if ($resp -match '^https?://t\.me/c/(\d+)/$') {
             $telegramUrl = $resp
-            $channelId = $Matches[1]
+            $channelIdentifier = $Matches[1]
+            break
+        } elseif ($resp -match '^https?://t\.me/([A-Za-z0-9_]{5,32})/$') {
+            $telegramUrl = $resp
+            $channelIdentifier = $Matches[1].ToLowerInvariant()
             break
         } else {
-            Write-Host "🔴 Invalid format, must be https://t.me/c/12345678/ exactly." -ForegroundColor Red
+            Write-Host "🔴 Invalid format, should be https://t.me/c/12345678/ or https://t.me/username/." -ForegroundColor Red
         }
     }
 }
@@ -321,12 +353,12 @@ if (Test-Path $errorFile) {
     Write-Host "📜 Loaded $($errorIds.Count) error indexes from $errorFile" -ForegroundColor Cyan
 }
 
-# Extract fully downloaded indexes from mediaDir
+# Extract fully downloaded indexes from mediaDir — only check message index regardless of channel prefix
 $downloadedIds = @()
 if (Test-Path $mediaDir) {
     $files = Get-ChildItem -Path $mediaDir -File
     foreach ($file in $files) {
-        if ($file.Name -match "^${channelId}_(\d+)_" -and $file.Length -gt 0 -and $file.Extension -ne ".tmp") {
+        if ($file.Name -match '^[^_]+_(\d+)_' -and $file.Length -gt 0 -and $file.Extension -ne ".tmp") {
             $downloadedIds += [int]$Matches[1]
         }
     }
@@ -397,11 +429,11 @@ while ($currentId -le $endId) {
         }
         $output | Out-File -FilePath $logFile -Append
 
-        # Check each index individually for success or failure
+        # Check each index individually for success or failure (match only by index part)
         $successfulIds = @()
         $failedIds = @()
         foreach ($id in $batch) {
-            $downloadedFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -gt 0 -and $_.Extension -ne ".tmp" }
+            $downloadedFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^[^_]+_${id}_.*" -and $_.Length -gt 0 -and $_.Extension -ne ".tmp" }
             if ($downloadedFile) {
                 $successfulIds += $id
                 Write-Host "✅ Downloaded $($downloadedFile.Name) for index $id" -ForegroundColor Green
@@ -415,7 +447,7 @@ while ($currentId -le $endId) {
 
         # Clean up any incomplete (zero-byte) files
         foreach ($id in $batch) {
-            $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -eq 0 }
+            $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^[^_]+_${id}_.*" -and $_.Length -eq 0 }
             if ($incompleteFile) {
                 Remove-Item -Path $incompleteFile.FullName -Force
                 Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red
@@ -445,7 +477,7 @@ while ($currentId -le $endId) {
     } catch {
         Write-Host "🔴 Error executing command for: $pair - $_" -ForegroundColor Red
         foreach ($id in $batch) {
-            $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -eq 0 }
+            $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^[^_]+_${id}_.*" -and $_.Length -eq 0 }
             if ($incompleteFile) {
                 Remove-Item -Path $incompleteFile.FullName -Force
                 Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red

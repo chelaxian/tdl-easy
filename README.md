@@ -7,7 +7,8 @@ PowerShell script to simplify downloading Telegram media from public/private gro
 ## Getting started
 
 0. Just go to [Release page](https://github.com/chelaxian/tdl-easy/releases/tag/1.0.0) and downlod and run `tdl_gui.exe`
-<img width="308" height="218" alt="image" src="https://github.com/user-attachments/assets/43cd4b68-bb60-43d6-8b9e-63d5478e9ac1" />
+<img width="616" height="484" alt="image" src="https://github.com/user-attachments/assets/446ae1b5-f97d-481a-97c2-c8ea2dc3e65f" />
+
 
 or if you want use powershell in console: 
 

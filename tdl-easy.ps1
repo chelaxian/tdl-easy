@@ -40,6 +40,7 @@ function Clear-Config {
         endId         = "" 
         downloadLimit = "" 
         threads       = "" 
+        maxRetries    = "" 
     }
     Save-Config $empty
 }
@@ -52,14 +53,14 @@ $startId       = ""
 $endId         = ""
 $downloadLimit = ""
 $threads       = ""
+$maxRetries    = 1     # Default retries set to 1
 $timeoutSeconds = 120  # timeout for each download in seconds
-$maxRetries     = 3    # max retries for failed downloads
 
 # Load existing configuration
 $existing = Load-Config
 $haveAnySaved = $false
 if ($existing) {
-    $props = @('tdl_path','telegramUrl','mediaDir','startId','endId','downloadLimit','threads')
+    $props = @('tdl_path','telegramUrl','mediaDir','startId','endId','downloadLimit','threads','maxRetries')
     foreach ($p in $props) {
         if ($existing.$p -and ($existing.$p.ToString().Trim() -ne "")) {
             $haveAnySaved = $true
@@ -73,6 +74,7 @@ if ($existing) {
         $endId         = $existing.endId
         $downloadLimit = $existing.downloadLimit
         $threads       = $existing.threads
+        $maxRetries    = $existing.maxRetries
     }
 }
 
@@ -86,7 +88,7 @@ if ($haveAnySaved) {
             # Clear stored config both on disk and in memory
             Clear-Config
             $tdl_path = ""; $telegramUrl = ""; $mediaDir = ""
-            $startId   = ""; $endId       = ""; $downloadLimit = ""; $threads = ""
+            $startId   = ""; $endId       = ""; $downloadLimit = ""; $threads = ""; $maxRetries = 1
         }
         default {
             Write-Host "ℹ️ Unrecognized response. Assuming use saved parameters." -ForegroundColor Yellow
@@ -143,7 +145,7 @@ if (-not $useSaved) {
         } while ($true)
         Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
 
-        # Telegram URL (only /c/<digits>/ format)
+        # Telegram URL
         do {
             Write-Host "";
             Write-Host "╔════════════════════ TELEGRAM URL CONFIGURATION ════════════════════════════╗" -ForegroundColor DarkGray
@@ -208,7 +210,7 @@ if (-not $useSaved) {
         do {
             Write-Host "";
             Write-Host "╔════════════════ CONCURRENCY CONFIGURATION ═════════════════════════════════╗" -ForegroundColor DarkGray
-            Write-Host "║ Defaults: downloadLimit=2, threads=4" -ForegroundColor Gray
+            Write-Host "║ Defaults: downloadLimit=2, threads=4, maxRetries=1" -ForegroundColor Gray
             Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
             Write-Host "Enter max concurrent download tasks (-l, 1 to 10) [default: 2]"
             $input = Read-Host
@@ -234,6 +236,19 @@ if (-not $useSaved) {
             }
             Write-Host "🔴 Error: Please enter a valid integer between 1 and 8 for the threads." -ForegroundColor Red
         } while ($true)
+
+        do {
+            Write-Host "Enter max retries for failed downloads (1 to 5) [default: 1]"
+            $input = Read-Host
+            if ([string]::IsNullOrWhiteSpace($input)) {
+                $maxRetries = 1
+                break
+            }
+            if ([int]::TryParse($input, [ref]$maxRetries) -and $maxRetries -ge 1 -and $maxRetries -le 5) {
+                break
+            }
+            Write-Host "🔴 Error: Please enter a valid integer between 1 and 5 for max retries." -ForegroundColor Red
+        } while ($true)
         Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
 
         # Persist all collected values atomically
@@ -245,6 +260,7 @@ if (-not $useSaved) {
             endId         = $endId
             downloadLimit = $downloadLimit
             threads       = $threads
+            maxRetries    = $maxRetries
         }
         Save-Config $toSave
     } catch {
@@ -253,13 +269,10 @@ if (-not $useSaved) {
     }
 }
 
-# ====================================================================================================
-# Main script logic continues below
-# ====================================================================================================
-
 # Set dependent paths
 $logFile = "${tdl_path}\download_log.txt"
 $processedFile = "${tdl_path}\processed.txt"
+$errorFile = "${tdl_path}\error_index.txt"
 
 # Extract channel ID from URL
 $channelId = $null
@@ -268,7 +281,6 @@ if ($telegramUrl -match '^https?://t\.me/c/(\d+)/$') {
 }
 if ([string]::IsNullOrWhiteSpace($channelId)) {
     Write-Host "🔴 Error: Failed to extract channel ID from URL: $telegramUrl" -ForegroundColor Red
-    # fallback: ask again
     while ($true) {
         $resp = Read-Host "Enter Telegram URL again in form https://t.me/c/12345678/ or type 'quit' to exit"
         if ($resp -eq 'quit') { exit }
@@ -296,11 +308,17 @@ if (-not (Test-Path ".\tdl.exe")) {
 $psVersion = $PSVersionTable.PSVersion
 Write-Host "ℹ️ Using PowerShell version: $psVersion" -ForegroundColor Cyan
 
-# Load already processed indexes
+# Load already processed and error indexes
 $processedIds = @()
 if (Test-Path $processedFile) {
     $processedIds = Get-Content $processedFile | ForEach-Object { [int]$_ }
     Write-Host "📜 Loaded $($processedIds.Count) processed indexes from $processedFile" -ForegroundColor Cyan
+}
+
+$errorIds = @()
+if (Test-Path $errorFile) {
+    $errorIds = Get-Content $errorFile | ForEach-Object { [int]$_ }
+    Write-Host "📜 Loaded $($errorIds.Count) error indexes from $errorFile" -ForegroundColor Cyan
 }
 
 # Extract fully downloaded indexes from mediaDir
@@ -315,21 +333,26 @@ if (Test-Path $mediaDir) {
     Write-Host "📂 Found $($downloadedIds.Count) fully downloaded indexes from files in $mediaDir" -ForegroundColor Cyan
 }
 
-# Combine processed and downloaded for skipping
-$allProcessedIds = ($processedIds + $downloadedIds) | Sort-Object -Unique
+# Combine processed, error, and downloaded for skipping
+$allProcessedIds = ($processedIds + $errorIds + $downloadedIds) | Sort-Object -Unique
 
 function Save-ProcessedId($id) {
     # Append processed ID to processed.txt
     $id | Out-File -FilePath $processedFile -Append
 }
 
+function Save-ErrorId($id) {
+    # Append error ID to error_index.txt
+    $id | Out-File -FilePath $errorFile -Append
+}
+
 # Main download loop
 $currentId = $startId
 $retryCount = 0
 while ($currentId -le $endId) {
-    # Skip already processed or downloaded
+    # Skip already processed, errored, or downloaded
     while ($currentId -le $endId -and $allProcessedIds -contains $currentId) {
-        Write-Host "⏭️ Skipped index: $currentId (processed or fully downloaded)" -ForegroundColor Cyan
+        Write-Host "⏭️ Skipped index: $currentId (processed, errored, or fully downloaded)" -ForegroundColor Cyan
         $currentId++
     }
     if ($currentId -gt $endId) { break }
@@ -385,21 +408,29 @@ while ($currentId -le $endId) {
         } else {
             Write-Host "🔴 Error downloading: $pair" -ForegroundColor Red
             foreach ($id in $batch) {
-                $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -eq 0 }
+                $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_$id_.*" -and $_.Length -eq 0 }
                 if ($incompleteFile) { Remove-Item -Path $incompleteFile.FullName -Force; Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red }
+                Save-ErrorId $id
             }
             $retryCount++
-            if ($retryCount -ge $maxRetries) { Write-Host "🔴 Exceeded max retries ($maxRetries) for: $pair" -ForegroundColor Red; $currentId = $batch[-1] + 1 }
+            if ($retryCount -ge $maxRetries) {
+                Write-Host "🔴 Exceeded max retries ($maxRetries) for: $pair" -ForegroundColor Red
+                $currentId = $batch[-1] + 1
+            }
         }
     } catch {
         Write-Host "🔴 Error executing command for: $pair - $_" -ForegroundColor Red
         foreach ($id in $batch) {
-            $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -eq 0 }
+            $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_$id_.*" -and $_.Length -eq 0 }
             if ($incompleteFile) { Remove-Item -Path $incompleteFile.FullName -Force; Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red }
+            Save-ErrorId $id
         }
         $_ | Out-File -FilePath $logFile -Append
         $retryCount++
-        if ($retryCount -ge $maxRetries) { Write-Host "🔴 Exceeded max retries ($maxRetries) for: $pair" -ForegroundColor Red; $currentId = $batch[-1] + 1 }
+        if ($retryCount -ge $maxRetries) {
+            Write-Host "🔴 Exceeded max retries ($maxRetries) for: $pair" -ForegroundColor Red
+            $currentId = $batch[-1] + 1
+        }
     }
 
     if ($output -match "done!" -or $retryCount -ge $maxRetries) {
@@ -409,10 +440,16 @@ while ($currentId -le $endId) {
     }
 }
 
-# Cleanup processed file after all
-if ($currentId -gt $endId -and (Test-Path $processedFile)) {
-    Remove-Item -Path $processedFile -Force
-    Write-Host "🗑️ File $processedFile deleted after completion." -ForegroundColor Cyan
+# Cleanup processed and error files after all
+if ($currentId -gt $endId) {
+    if (Test-Path $processedFile) {
+        Remove-Item -Path $processedFile -Force
+        Write-Host "🗑️ File $processedFile deleted after completion." -ForegroundColor Cyan
+    }
+    if (Test-Path $errorFile) {
+        Remove-Item -Path $errorFile -Force
+        Write-Host "🗑️ File $errorFile deleted after completion." -ForegroundColor Cyan
+    }
 }
 
 Write-Host "🎉 Completed! All indexes processed." -ForegroundColor Cyan

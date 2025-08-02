@@ -6,12 +6,30 @@ PowerShell script to simplify downloading Telegram media from public/private gro
 
 ## Getting started
 
-1. download `tdl-updater.ps1` and `tdl-easy-range.ps1` and `tdl-easy-full.ps1` to your windows x64 PC/laptop
+0. Just go to Release page and downlod and run `tdl_gui.exe`
+<img width="308" height="218" alt="image" src="https://github.com/user-attachments/assets/43cd4b68-bb60-43d6-8b9e-63d5478e9ac1" />
+
+or if you want use powershell in console: 
+
+1. download this project to your windows x64 PC/laptop
 2. run Telegram client, open `cmd.exe` and run `powershell` (or directly open `powershell.exe`)
 3. locate in powershell via `cd C:\PATH\TO\YOUR\FOLDER` command to scripts directory  and run `.\tdl-updater.ps1` to download/update `tdl.exe`
 4. run `.\tdl.exe login` and choose your Telegram ID and say `No` when asking about logout.
 5. run `.\tdl-easy-range.ps1` or `.\tdl-easy-full.ps1` and follow interactive wizard to set up and start downloading.
 
+---
+## Compile GUI
+
+To compile GUI version from source copy file `GUI\tdl_gui.py` to other `ps1` scripts and use command:
+```python
+pip install --upgrade pyinstaller
+pyinstaller --onefile --noconsole `
+  --add-data "tdl-updater.ps1;." `
+  --add-data "tdl-easy-single.ps1;." `
+  --add-data "tdl-easy-range.ps1;." `
+  --add-data "tdl-easy-full.ps1;." `
+  tdl_gui.py
+```
 ---
 
 ## Interactive `tdl-easy-range.ps1` wizard view

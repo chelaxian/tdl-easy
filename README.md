@@ -1,6 +1,6 @@
 # tdl-easy (windows x64 only)
 
-PowerShell script to simplify downloading Telegram media from public/private groups/channels even without a public link. You only need the URL to any message in the private Telegram group/channel. Specify the message index range (for ex., from 1 to 1000), and script will download all media from this messages. Also you can copy-paste only 1 URL to any message in chat and script will download all media in that chat.
+Portable GUI and PowerShell scripts to simplify downloading Telegram media from public/private groups/channels even without a public link. You only need the URL to any message in the private Telegram group/channel. Specify the message index range (for ex., from 1 to 1000), and script will download all media from this messages. Also you can copy-paste only 1 URL to any message in chat and script will download one or all media in that chat.
 
 ---
 
@@ -16,7 +16,7 @@ or if you want use powershell in console:
 2. run Telegram client, open `cmd.exe` and run `powershell` (or directly open `powershell.exe`)
 3. locate in powershell via `cd C:\PATH\TO\YOUR\FOLDER` command to scripts directory  and run `.\tdl-updater.ps1` to download/update `tdl.exe`
 4. run `.\tdl.exe login` and choose your Telegram ID and say `No` when asking about logout.
-5. run `.\tdl-easy-range.ps1` or `.\tdl-easy-full.ps1` and follow interactive wizard to set up and start downloading.
+5. run `.\tdl-easy-range.ps1` or `.\tdl-easy-full.ps1` or `.\tdl-easy-single.ps1` and follow interactive wizard to set up and start downloading.
 
 ---
 ## Compile GUI

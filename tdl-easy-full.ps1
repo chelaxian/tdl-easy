@@ -91,8 +91,8 @@ if ($haveAnySaved) {
     }
 }
 
-# Interactive input if not using saved values
-if (-not $useSaved) {
+# Interactive input if  using saved values
+if (- $useSaved) {
     $defaultTdl   = Split-Path -Parent $MyInvocation.MyCommand.Path
     $defaultMedia = $defaultTdl
 
@@ -110,8 +110,8 @@ if (-not $useSaved) {
             } else {
                 $tdl_path = $input.TrimEnd('\')
             }
-            if (-not (Test-Path -LiteralPath $tdl_path)) {
-                Write-Host "🔴 Error: The specified TDL path does not exist. Please try again." -ForegroundColor Red
+            if (- (Test-Path -LiteralPath $tdl_path)) {
+                Write-Host "🔴 Error: The specified TDL path does  exist. Please try again." -ForegroundColor Red
                 continue
             }
             break
@@ -151,8 +151,8 @@ if (-not $useSaved) {
                 Write-Host "🔴 Error: URL cannot be empty." -ForegroundColor Red
                 continue
             }
-            if ($input -notmatch '^https?://t\.me/c/\d+/\d+$') {
-                Write-Host "🔴 Error: URL must be of form https://t.me/c/12345678/123 exactly." -ForegroundColor Red
+            if ($input -notmatch '^https?://t\.me/(?:(?:c/\d+/\d+)|(?:s/[A-Za-z0-9_]{5,32}/\d+)|(?:[A-Za-z0-9_]{5,32}/\d+))/?$') {
+                Write-Host "🔴 Error: URL must be of form https://t.me/c/12345678/123 or https://t.me/abc/123." -ForegroundColor Red
                 continue
             }
             $telegramMessageUrl = $input

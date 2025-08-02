@@ -111,7 +111,7 @@ if (-not $useSaved) {
             Write-Host "🔴 Error: URL cannot be empty." -ForegroundColor Red
             continue
         }
-        if ($input -notmatch '^https?://t\.me/c/\d+/\d+$') {
+        if ($input -notmatch '^https?://t\.me/(?:(?:c/\d+/\d+)|(?:s/[A-Za-z0-9_]{5,32}/\d+)|(?:[A-Za-z0-9_]{5,32}/\d+))/?$') {
             Write-Host "🔴 Error: URL must be of form https://t.me/c/12345678/123 exactly." -ForegroundColor Red
             continue
         }

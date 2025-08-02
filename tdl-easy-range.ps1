@@ -378,6 +378,9 @@ function Save-ErrorId($id) {
     $id | Out-File -FilePath $errorFile -Append
 }
 
+# track if any successful download occurred
+$anySuccess = $false
+
 # Main download loop
 $currentId = $startId
 $retryCount = 0
@@ -457,8 +460,10 @@ while ($currentId -le $endId) {
         # Summarize the batch result
         if ($successfulIds.Count -gt 0 -and $failedIds.Count -eq 0) {
             Write-Host "🟢 Successfully downloaded indexes: $($successfulIds -join ',')" -ForegroundColor Green
+            $anySuccess = $true
         } elseif ($successfulIds.Count -gt 0 -and $failedIds.Count -gt 0) {
             Write-Host "🟡 Partial success for batch: $($successfulIds -join ',') downloaded; $($failedIds -join ',') failed" -ForegroundColor Yellow
+            $anySuccess = $true
         } else {
             Write-Host "🔴 All indexes failed: $($failedIds -join ',')" -ForegroundColor Red
             $retryCount++
@@ -506,6 +511,16 @@ if ($currentId -gt $endId) {
     if (Test-Path $errorFile) {
         Remove-Item -Path $errorFile -Force
         Write-Host "🗑️ File $errorFile deleted after completion." -ForegroundColor Cyan
+    }
+
+    # Auto-open folder if any downloads succeeded
+    if ($anySuccess) {
+        Write-Host "📂 Opening download folder: $mediaDir" -ForegroundColor Cyan
+        try {
+            Start-Process explorer.exe -ArgumentList $mediaDir
+        } catch {
+            Write-Host "⚠️ Не удалось открыть папку: $_" -ForegroundColor Yellow
+        }
     }
 }
 

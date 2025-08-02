@@ -271,8 +271,8 @@ if (-not $useSaved) {
 
 # Set dependent paths
 $logFile = "${tdl_path}\download_log.txt"
-$processedFile = "${tdl_path}\processed.txt"
-$errorFile = "${tdl_path}\error_index.txt"
+$processedFile = "${mediaDir}\processed.txt"
+$errorFile = "${mediaDir}\error_index.txt"
 
 # Extract channel ID from URL
 $channelId = $null
@@ -408,7 +408,7 @@ while ($currentId -le $endId) {
         } else {
             Write-Host "🔴 Error downloading: $pair" -ForegroundColor Red
             foreach ($id in $batch) {
-                $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_$id_.*" -and $_.Length -eq 0 }
+                $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -eq 0 }
                 if ($incompleteFile) { Remove-Item -Path $incompleteFile.FullName -Force; Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red }
                 Save-ErrorId $id
             }
@@ -421,7 +421,7 @@ while ($currentId -le $endId) {
     } catch {
         Write-Host "🔴 Error executing command for: $pair - $_" -ForegroundColor Red
         foreach ($id in $batch) {
-            $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_$id_.*" -and $_.Length -eq 0 }
+            $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -eq 0 }
             if ($incompleteFile) { Remove-Item -Path $incompleteFile.FullName -Force; Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red }
             Save-ErrorId $id
         }

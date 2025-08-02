@@ -192,7 +192,7 @@ function Stream-FileContents($filePath, $lastPosition, $foregroundColor = "White
 }
 
 # Download the single file
-$downloadCommand = ".\tdl.exe dl -c $channelId -m $messageId --dir `"$tdl_path`" -l $downloadLimit -t $threads"
+$downloadCommand = ".\tdl.exe download --dir `"$tdl_path`" --url `"$telegramMessageUrl`" -l $downloadLimit -t $threads"
 Write-Host "🟡 Starting download for chat ID: $channelId, message ID: $messageId" -ForegroundColor Yellow
 Write-Host "📋 Download Command: $downloadCommand" -ForegroundColor Gray
 "[$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))] Starting download for chat ID: $channelId, message ID: $messageId" | Out-File -FilePath $logFile -Append

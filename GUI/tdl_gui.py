@@ -129,7 +129,6 @@ def login_telegram():
         "Сейчас откроется консоль. Выбери вручную user id, затем на вопрос\n"
         "'Do you want to logout existing desktop session?' ответь N."
     )
-    # launch interactive login in new PowerShell window
     cmd = [
         "cmd", "/c", "start", "PowerShell.exe",
         "-NoExit",
@@ -142,16 +141,19 @@ def login_telegram():
         messagebox.showerror("Ошибка запуска", str(e))
 
 def download_single_file():
-    url = simpledialog.askstring("Одиночный файл", "Вставьте ссылку на сообщение (https://t.me/…/123):", parent=MAIN_ROOT)
+    url = simpledialog.askstring("Одиночный файл", "Вставьте ссылку на сообщение (https://t.me/...):", parent=MAIN_ROOT)
     if not url:
         return
     url = url.strip()
     if not (url.startswith("http://") or url.startswith("https://")):
         messagebox.showwarning("Неправильный URL", "Ожидается полный URL начиная с http:// или https://")
         return
+    # validate single message or topic message URL
+    if not re.match(r"^https?://t\.me/(?:(?:c/\d+/(?:\d+))(?:/\d+)?|(?:[A-Za-z0-9_]{5,32}/\d+))$", url):
+        messagebox.showwarning("Неправильный URL", "Ожидается ссылка вида https://t.me/username/123 или https://t.me/c/12345678/123 или https://t.me/c/12345678/456/123")
+        return
 
     launcher_dir = get_launcher_dir()
-
     original = ensure_and_copy("tdl-easy-single.ps1")
     if not original:
         return
@@ -221,15 +223,18 @@ def download_range():
         return
 
     while True:
-        base_link = simpledialog.askstring("Базовая ссылка Telegram", "Введите базовую ссылку (https://t.me/c/12345678/ или https://t.me/username/):", parent=MAIN_ROOT)
+        base_link = simpledialog.askstring("Базовая ссылка Telegram", "Введите базовую ссылку (https://t.me/c/12345678/ или https://t.me/username/ или https://t.me/c/2267448302/166/):", parent=MAIN_ROOT)
         if not base_link:
             return
         base_link = base_link.strip()
         if not base_link.endswith("/"):
             base_link += "/"
-        if re.match(r"^https?://t\.me/c/\d+/$", base_link) or re.match(r"^https?://t\.me/[A-Za-z0-9_]{5,32}/$", base_link):
+        # support topic base
+        if (re.match(r"^https?://t\.me/c/\d+/$", base_link)
+                or re.match(r"^https?://t\.me/c/\d+/\d+/$", base_link)
+                or re.match(r"^https?://t\.me/[A-Za-z0-9_]{5,32}/$", base_link)):
             break
-        messagebox.showwarning("Неправильный формат", "Ожидается https://t.me/c/12345678/ или https://t.me/username/ с завершающим слешем.")
+        messagebox.showwarning("Неправильный формат", "Ожидается https://t.me/c/12345678/ или https://t.me/c/12345678/123/ или https://t.me/username/ с завершающим слешем.")
 
     while True:
         start_id_dlg = IntegerInputDialog(MAIN_ROOT, "Начальный индекс", "Введите startId (положительное целое, по умолчанию 1):", initialvalue=1, minvalue=1)
@@ -298,13 +303,14 @@ def download_full_chat():
         return
 
     while True:
-        msg_url = simpledialog.askstring("Ссылка на сообщение", "Введите Telegram message URL (https://t.me/c/12345678/123 или https://t.me/username/123):", parent=MAIN_ROOT)
+        msg_url = simpledialog.askstring("Ссылка на сообщение", "Введите Telegram message URL (https://t.me/c/12345678/123 или https://t.me/username/123 или https://t.me/c/2267448302/166/4771):", parent=MAIN_ROOT)
         if not msg_url:
             return
         msg_url = msg_url.strip()
-        if re.match(r"^https?://t\.me/c/\d+/\d+$", msg_url) or re.match(r"^https?://t\.me/[A-Za-z0-9_]{5,32}/\d+$", msg_url):
+        # allow topic message URL
+        if re.match(r"^https?://t\.me/c/\d+/\d+$", msg_url) or re.match(r"^https?://t\.me/c/\d+/\d+/\d+$", msg_url) or re.match(r"^https?://t\.me/[A-Za-z0-9_]{5,32}/\d+$", msg_url):
             break
-        messagebox.showwarning("Неправильный формат", "Ожидается https://t.me/c/12345678/123 или https://t.me/username/123.")
+        messagebox.showwarning("Неправильный формат", "Ожидается ссылка вида https://t.me/c/12345678/123 или https://t.me/c/12345678/123/456 или https://t.me/username/123.")
 
     while True:
         dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, "Лимит задач", "Макс concurrent download tasks (1-10) [default 2]:", initialvalue=2, minvalue=1, maxvalue=10)

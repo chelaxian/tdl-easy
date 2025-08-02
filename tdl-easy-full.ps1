@@ -91,8 +91,8 @@ if ($haveAnySaved) {
     }
 }
 
-# Interactive input if  using saved values
-if (- $useSaved) {
+# Interactive input if not using saved values
+if (-not $useSaved) {
     $defaultTdl   = Split-Path -Parent $MyInvocation.MyCommand.Path
     $defaultMedia = $defaultTdl
 
@@ -110,8 +110,8 @@ if (- $useSaved) {
             } else {
                 $tdl_path = $input.TrimEnd('\')
             }
-            if (- (Test-Path -LiteralPath $tdl_path)) {
-                Write-Host "🔴 Error: The specified TDL path does  exist. Please try again." -ForegroundColor Red
+            if (-not (Test-Path -LiteralPath $tdl_path)) {
+                Write-Host "🔴 Error: The specified TDL path does not exist. Please try again." -ForegroundColor Red
                 continue
             }
             break
@@ -143,7 +143,7 @@ if (- $useSaved) {
         do {
             Write-Host "";
             Write-Host "╔════════════════════ TELEGRAM MESSAGE URL CONFIGURATION ════════════════════╗" -ForegroundColor DarkGray
-            Write-Host "║ Example: https://t.me/c/12345678/123 (any message from the chat)" -ForegroundColor Gray
+            Write-Host "║ Example: https://t.me/c/12345678/123 or https://t.me/username/123" -ForegroundColor Gray
             Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
             Write-Host "Copy-Paste any message URL from the group/channel" 
             $input = Read-Host
@@ -151,8 +151,10 @@ if (- $useSaved) {
                 Write-Host "🔴 Error: URL cannot be empty." -ForegroundColor Red
                 continue
             }
-            if ($input -notmatch '^https?://t\.me/(?:(?:c/\d+/\d+)|(?:s/[A-Za-z0-9_]{5,32}/\d+)|(?:[A-Za-z0-9_]{5,32}/\d+))/?$') {
-                Write-Host "🔴 Error: URL must be of form https://t.me/c/12345678/123 or https://t.me/abc/123." -ForegroundColor Red
+            $input = $input.TrimEnd('/')
+
+            if ($input -notmatch '^https?://t\.me/(?:(?:c/\d+/\d+)|(?:[A-Za-z0-9_]{5,32}/\d+))$') {
+                Write-Host "🔴 Error: URL must be of form https://t.me/c/12345678/123 or https://t.me/username/123." -ForegroundColor Red
                 continue
             }
             $telegramMessageUrl = $input
@@ -227,22 +229,28 @@ $exportFile = "${mediaDir}\tdl-export.json"
 $processedFile = "${mediaDir}\processed.txt"
 $errorFile = "${mediaDir}\error_index.txt"
 
-# Extract chat ID from message URL
+# Extract chat ID or username from message URL
 $channelId = $null
 if ($telegramMessageUrl -match '^https?://t\.me/c/(\d+)/\d+$') {
     $channelId = $Matches[1]
+} elseif ($telegramMessageUrl -match '^https?://t\.me/([A-Za-z0-9_]{5,32})/\d+$') {
+    $channelId = $Matches[1]
 }
 if ([string]::IsNullOrWhiteSpace($channelId)) {
-    Write-Host "🔴 Error: Failed to extract chat ID from URL: $telegramMessageUrl" -ForegroundColor Red
+    Write-Host "🔴 Error: Failed to extract chat identifier from URL: $telegramMessageUrl" -ForegroundColor Red
     while ($true) {
-        $resp = Read-Host "Enter Telegram message URL again in form https://t.me/c/12345678/123 or type 'quit' to exit"
+        $resp = Read-Host "Enter Telegram message URL again in form https://t.me/c/12345678/123 or https://t.me/username/123 or type 'quit' to exit"
         if ($resp -eq 'quit') { exit }
         if ($resp -match '^https?://t\.me/c/(\d+)/\d+$') {
             $telegramMessageUrl = $resp
             $channelId = $Matches[1]
             break
+        } elseif ($resp -match '^https?://t\.me/([A-Za-z0-9_]{5,32})/\d+$') {
+            $telegramMessageUrl = $resp
+            $channelId = $Matches[1]
+            break
         } else {
-            Write-Host "🔴 Invalid format, must be https://t.me/c/12345678/123 exactly." -ForegroundColor Red
+            Write-Host "🔴 Invalid format, must be https://t.me/c/12345678/123 or https://t.me/username/123 exactly." -ForegroundColor Red
         }
     }
 }
@@ -298,7 +306,7 @@ function Save-ErrorId($id) {
     $id | Out-File -FilePath $errorFile -Append
 }
 
-# Export all messages to tdl-export.json
+# Export all messages to tdl-export.json (supports both numeric internal and username)
 $exportCommand = ".\tdl.exe chat export -c $channelId --with-content -o `"$exportFile`""
 Write-Host "🟡 Starting export for chat ID: $channelId" -ForegroundColor Yellow
 Write-Host "📋 Export Command: $exportCommand" -ForegroundColor Gray

@@ -149,9 +149,9 @@ if (-not $useSaved) {
         do {
             Write-Host "";
             Write-Host "╔════════════════════ TELEGRAM URL CONFIGURATION ════════════════════════════╗" -ForegroundColor DarkGray
-            Write-Host "║ Examples: https://t.me/c/12345678/ or https://t.me/abc/ (without message index)" -ForegroundColor Gray
+            Write-Host "║ Examples: https://t.me/c/1234/ or https://t.me/abc/ (without message index)" -ForegroundColor Gray
             Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
-            Write-Host "Enter base Telegram channel/group URL (no message index), e.g., https://t.me/c/12345678/ or https://t.me/username/"
+            Write-Host "Copy-Paste Telegram channel/group base URL (no message index in the end)"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
                 Write-Host "🔴 Error: URL cannot be empty." -ForegroundColor Red

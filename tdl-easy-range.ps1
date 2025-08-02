@@ -145,13 +145,13 @@ if (-not $useSaved) {
         } while ($true)
         Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
 
-        # Telegram base URL input (only two forms allowed: internal numeric c/ or public username)
+        # Telegram base URL input (supports username base, internal base, or topic base)
         do {
             Write-Host "";
             Write-Host "╔════════════════════ TELEGRAM URL CONFIGURATION ════════════════════════════╗" -ForegroundColor DarkGray
-            Write-Host "║ Examples: https://t.me/c/1234/ or https://t.me/abc/ (without message index)" -ForegroundColor Gray
+            Write-Host "║Example: https://t.me/c/123/ or https://t.me/abc/ or https://t.me/c/123/456/" -ForegroundColor Gray
             Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
-            Write-Host "Copy-Paste Telegram channel/group base URL (no message index in the end)"
+            Write-Host "Copy-Paste Telegram channel/group/topic base URL (no message index in the end)"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
                 Write-Host "🔴 Error: URL cannot be empty." -ForegroundColor Red
@@ -180,10 +180,13 @@ if (-not $useSaved) {
             } elseif ($segments.Length -eq 2 -and $segments[0] -eq 'c' -and $segments[1] -match '^\d+$') {
                 # internal channel base
                 $isValidBase = $true
+            } elseif ($segments.Length -eq 3 -and $segments[0] -eq 'c' -and $segments[1] -match '^\d+$' -and $segments[2] -match '^\d+$') {
+                # topic base
+                $isValidBase = $true
             }
 
             if (-not $isValidBase) {
-                Write-Host "🔴 Error: URL должен быть https://t.me/c/12345678/ или https://t.me/username/." -ForegroundColor Red
+                Write-Host "🔴 Error: URL должен быть https://t.me/c/12345678/ или https://t.me/username/ или topic base https://t.me/c/2267448302/166/." -ForegroundColor Red
                 continue
             }
 
@@ -299,9 +302,12 @@ $logFile = "${tdl_path}\download_log.txt"
 $processedFile = "${mediaDir}\processed.txt"
 $errorFile = "${mediaDir}\error_index.txt"
 
-# Extract channel identifier (internal numeric or public username) from base URL
+# Extract channel identifier (internal numeric, topic base, or public username) from base URL
 $channelIdentifier = $null
-if ($telegramUrl -match '^https?://t\.me/c/(\d+)/$') {
+if ($telegramUrl -match '^https?://t\.me/c/(\d+)/(\d+)/$') {
+    # topic base
+    $channelIdentifier = "$($Matches[1])/$($Matches[2])"
+} elseif ($telegramUrl -match '^https?://t\.me/c/(\d+)/$') {
     $channelIdentifier = $Matches[1]
 } elseif ($telegramUrl -match '^https?://t\.me/([A-Za-z0-9_]{5,32})/$') {
     $channelIdentifier = $Matches[1].ToLowerInvariant()
@@ -310,10 +316,14 @@ if ($telegramUrl -match '^https?://t\.me/c/(\d+)/$') {
 if ([string]::IsNullOrWhiteSpace($channelIdentifier)) {
     Write-Host "🔴 Error: Failed to extract channel/group identifier from URL: $telegramUrl" -ForegroundColor Red
     while ($true) {
-        $resp = Read-Host "Enter the base Telegram link again (https://t.me/c/12345678/ or https://t.me/username/) or 'quit' to exit"
+        $resp = Read-Host "Enter the base Telegram link again (https://t.me/c/12345678/ or https://t.me/c/2267448302/166/ or https://t.me/username/) or 'quit' to exit"
         if ($resp -eq 'quit') { exit }
         if (-not $resp.EndsWith("/")) { $resp = "$resp/" }
-        if ($resp -match '^https?://t\.me/c/(\d+)/$') {
+        if ($resp -match '^https?://t\.me/c/(\d+)/(\d+)/$') {
+            $telegramUrl = $resp
+            $channelIdentifier = "$($Matches[1])/$($Matches[2])"
+            break
+        } elseif ($resp -match '^https?://t\.me/c/(\d+)/$') {
             $telegramUrl = $resp
             $channelIdentifier = $Matches[1]
             break
@@ -322,7 +332,7 @@ if ([string]::IsNullOrWhiteSpace($channelIdentifier)) {
             $channelIdentifier = $Matches[1].ToLowerInvariant()
             break
         } else {
-            Write-Host "🔴 Invalid format, should be https://t.me/c/12345678/ or https://t.me/username/." -ForegroundColor Red
+            Write-Host "🔴 Invalid format, should be https://t.me/c/12345678/ or https://t.me/c/2267448302/166/ or https://t.me/username/." -ForegroundColor Red
         }
     }
 }

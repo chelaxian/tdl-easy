@@ -6,18 +6,18 @@ PowerShell script to simplify downloading Telegram media from private groups/cha
 
 ## Getting started
 
-1. download `tdl-updater.ps1` and `tdl-easy-range.ps1` to your windows x64 PC/laptop
+1. download `tdl-updater.ps1` and `tdl-easy-range.ps1` and `tdl-easy-full.ps1` to your windows x64 PC/laptop
 2. run Telegram client, open `cmd.exe` and run `powershell` (or directly open `powershell.exe`)
 3. locate in powershell via `cd C:\PATH\TO\YOUR\FOLDER` command to scripts directory  and run `.\tdl-updater.ps1` to download/update `tdl.exe`
 4. run `.\tdl.exe login` and choose your Telegram ID
-5. run `.\tdl-easy-range.ps1` and follow interactive wizard to set up and start downloading.
+5. run `.\tdl-easy-range.ps1` or `tdl-easy-full.ps1` and follow interactive wizard to set up and start downloading.
 
 ---
 
-## Interactive wizard view
+## Interactive `tdl-easy-range.ps1` wizard view
 
 ```powershell
-PS C:\Users\admin\Desktop\tdl> .\tdl-updater.ps1
+PS C:\Users\admin\Desktop\tdl> .\tdl-easy-range.ps1
 
 ╔════════════════════ TDL PATH CONFIGURATION ════════════════════════════════╗
 ║ Default: C:\Users\admin\Desktop\tdl
@@ -59,7 +59,46 @@ Enter max threads per task (-t, 1 to 8) [default: 4]
 ╚════════════════════════════════════════════════════════════════════════════╝
 ```
 ---
+## Interactive `tdl-easy-full.ps1` wizard view
 
+```powershell
+PS C:\Users\admin\Desktop\tdl> .\tdl-easy-full.ps1
+
+Type (Yes) to use saved parameters or type (No) to clean them and start new job: No
+
+╔════════════════════ TDL PATH CONFIGURATION ════════════════════════════════╗
+║ Default: C:\Users\admin\Desktop\tdl
+╠────────────────────────────────────────────────────────────────────────────╣
+Enter the TDL path (e.g., D:\tdl, no trailing slash)
+
+╚════════════════════════════════════════════════════════════════════════════╝
+
+╔══════════════════ MEDIA DIRECTORY CONFIGURATION ═══════════════════════════╗
+║ Default: C:\Users\admin\Desktop\tdl
+╠────────────────────────────────────────────────────────────────────────────╣
+Enter the directory for saving media files (e.g., D:\tdl\videos)
+C:\Users\admin\Desktop\tdl\Photos
+╚════════════════════════════════════════════════════════════════════════════╝
+
+╔════════════════════ TELEGRAM MESSAGE URL CONFIGURATION ════════════════════╗
+║ Example: https://t.me/c/12345678/123 (any message from the chat)
+╠────────────────────────────────────────────────────────────────────────────╣
+Copy-Paste any message URL from the group/channel
+https://t.me/c/1234567890/101
+╚════════════════════════════════════════════════════════════════════════════╝
+
+╔════════════════ CONCURRENCY CONFIGURATION ═════════════════════════════════╗
+║ Defaults: downloadLimit=2, threads=4, maxRetries=1
+╠────────────────────────────────────────────────────────────────────────────╣
+Enter max concurrent download tasks (-l, 1 to 10) [default: 2]
+4
+Enter max threads per task (-t, 1 to 8) [default: 4]
+8
+Enter max retries for failed downloads (1 to 5) [default: 1]
+1
+╚════════════════════════════════════════════════════════════════════════════╝
+```
+---
 ## tdl-easy-range running status view
 ```powershell
 ℹ️ Using PowerShell version: 5.1.27695.1000
@@ -89,6 +128,44 @@ Example Telegram Channel(1234567890):105 ~ ... done! [694.96 MB in 5m17.31s; 2.1
 ✅ Downloaded 1234567890_103_Example Telegram Channel 106.mp4
 ✅ Downloaded 1234567890_104_Example Telegram Channel 107.mp4
 ✅ Downloaded 1234567890_105_Example Telegram Channel 108.mp4
+```
+---
+## tdl-easy-full running status view
+```powershell
+ℹ️ Using PowerShell version: 5.1.27695.1000
+📂 Found 0 fully downloaded indexes from files in C:\Users\admin\Desktop\tdl\Photos
+🟡 Starting export for chat ID: 1234567890
+📋 Export Command: .\tdl.exe chat export -c 1234567890 --with-content -o "C:\Users\admin\Desktop\tdl\Photos\tdl-export.json"
+WARN: Export only generates minimal JSON for tdl download, not for backup.
+Occasional suspensions are due to Telegram rate limitations, please wait a moment.
+Type: time | Input: [0 9223372036854775807]
+TEST_Photos-1234567890     ... done! [79 in 934ms; 78/s]
+🟢 Successfully exported messages to C:\Users\admin\Desktop\tdl\Photos\tdl-export.json
+🟡 Starting download attempt 1 of 1
+📋 Download Command: .\tdl.exe download --file "C:\Users\admin\Desktop\tdl\Photos\tdl-export.json" --dir "C:\Users\admin\Desktop\tdl\Photos" -l 4 -t 8 --skip-same
+All files will be downloaded to 'C:\Users\admin\Desktop\tdl\Photos' dir
+TEST_Photos(1234567890):4~ ... done! [130.12 KB in 619ms; 187.88 KB/s]
+TEST_Photos(1234567890):2~ ... done! [3.53 MB in 1.035s; 3.25 MB/s]
+TEST_Photos(1234567890):1~ ... done! [112.85 KB in 667ms; 150.47 KB/s]
+TEST_Photos(1234567890):1~ ... done! [789.17 KB in 354ms; 1.76 MB/s]
+TEST_Photos(1234567890):1~ ... done! [130.74 KB in 326ms; 375.40 KB/s]
+TEST_Photos(1234567890):1~ ... done! [114.24 KB in 277ms; 349.82 KB/s]
+TEST_Photos(1234567890):1~ ... done! [37.38 KB in 376ms; 80.88 KB/s]
+TEST_Photos(1234567890):2~ ... done! [3.68 MB in 746ms; 4.92 MB/s]
+TEST_Photos(1234567890):2~ ... done! [2.44 MB in 1.29s; 1.87 MB/s]
+✅ Downloaded 1234567890_100_4.mp4 for index 100
+✅ Downloaded 1234567890_101_2.mp4 for index 101
+✅ Downloaded 1234567890_102_1.mp4 for index 102
+✅ Downloaded 1234567890_15_1.jpg for index 15
+✅ Downloaded 1234567890_16_1.mp4 for index 16
+✅ Downloaded 1234567890_17_1.jpg for index 17
+✅ Downloaded 1234567890_18_1.jpg for index 18
+✅ Downloaded 1234567890_19_2.jpg for index 19
+✅ Downloaded 1234567890_20_2.mp4 for index 20
+🟢 Successfully downloaded indexes: 100,101,102,15,16,17,18,19,20
+🗑️ File C:\Users\admin\Desktop\tdl\Photos\tdl-export.json deleted after completion.
+🗑️ File C:\Users\admin\Desktop\tdl\Photos\processed.txt deleted after completion.
+🎉 Completed! All indexes processed.
 ```
 ---
 ## tdl-easy-range updater view

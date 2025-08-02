@@ -65,7 +65,6 @@ class StringInputDialog(simpledialog.Dialog):
         super().__init__(parent, title)
 
     def body(self, master):
-        # keep dialog always on top
         self.attributes("-topmost", True)
         tk.Label(master, text=self.prompt).grid(row=0, sticky="w", padx=5, pady=(5,0))
         self.entry = tk.Entry(master, width=self.entry_width)
@@ -117,6 +116,30 @@ def install_update_tdl():
     if not updater:
         return
     run_powershell_script(updater)
+
+def login_telegram():
+    launcher_dir = get_launcher_dir()
+    tdl_exe = os.path.join(launcher_dir, "tdl.exe")
+    if not os.path.isfile(tdl_exe):
+        messagebox.showerror("Ошибка", "tdl.exe не найден в папке запуска. Сначала установи/обнови TDL.")
+        return
+
+    messagebox.showinfo(
+        "Логин в Telegram",
+        "Сейчас откроется консоль. Выбери вручную user id, затем на вопрос\n"
+        "'Do you want to logout existing desktop session?' ответь N."
+    )
+    # launch interactive login in new PowerShell window
+    cmd = [
+        "cmd", "/c", "start", "PowerShell.exe",
+        "-NoExit",
+        "-ExecutionPolicy", "Bypass",
+        "-Command", f"& '{tdl_exe}' login"
+    ]
+    try:
+        subprocess.Popen(cmd, cwd=launcher_dir)
+    except Exception as e:
+        messagebox.showerror("Ошибка запуска", str(e))
 
 def download_single_file():
     url = simpledialog.askstring("Одиночный файл", "Вставьте ссылку на сообщение (https://t.me/…/123):", parent=MAIN_ROOT)
@@ -183,7 +206,6 @@ function Read-Host {{
 def download_range():
     launcher_dir = get_launcher_dir()
 
-    # TDL path with prefill using custom dialog
     default_tdl = launcher_dir
     dlg = StringInputDialog(MAIN_ROOT, "TDL path", "Путь до TDL:", initialvalue=default_tdl, width=80)
     tdl_path = dlg.result if dlg.result and dlg.result.strip() != "" else default_tdl
@@ -191,7 +213,6 @@ def download_range():
         messagebox.showerror("Ошибка", f"TDL path не найден: {tdl_path}")
         return
 
-    # Media directory with prefill
     default_media = launcher_dir
     dlg2 = StringInputDialog(MAIN_ROOT, "Media directory", "Директория для сохранения:", initialvalue=default_media, width=80)
     media_dir = dlg2.result if dlg2.result and dlg2.result.strip() != "" else default_media
@@ -199,7 +220,6 @@ def download_range():
         messagebox.showerror("Ошибка", f"Media directory не найден: {media_dir}")
         return
 
-    # Telegram base link
     while True:
         base_link = simpledialog.askstring("Базовая ссылка Telegram", "Введите базовую ссылку (https://t.me/c/12345678/ или https://t.me/username/):", parent=MAIN_ROOT)
         if not base_link:
@@ -211,7 +231,6 @@ def download_range():
             break
         messagebox.showwarning("Неправильный формат", "Ожидается https://t.me/c/12345678/ или https://t.me/username/ с завершающим слешем.")
 
-    # startId / endId
     while True:
         start_id_dlg = IntegerInputDialog(MAIN_ROOT, "Начальный индекс", "Введите startId (положительное целое, по умолчанию 1):", initialvalue=1, minvalue=1)
         start_id = start_id_dlg.result
@@ -226,7 +245,6 @@ def download_range():
             continue
         break
 
-    # downloadLimit
     while True:
         dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, "Лимит задач", "Макс concurrent download tasks (1-10) [default 2]:", initialvalue=2, minvalue=1, maxvalue=10)
         dl_limit = dl_limit_dlg.result
@@ -235,7 +253,6 @@ def download_range():
         if 1 <= dl_limit <= 10:
             break
 
-    # threads
     while True:
         threads_dlg = IntegerInputDialog(MAIN_ROOT, "Потоки", "Max threads per task (1-8) [default 4]:", initialvalue=4, minvalue=1, maxvalue=8)
         threads = threads_dlg.result
@@ -266,7 +283,6 @@ def download_range():
 def download_full_chat():
     launcher_dir = get_launcher_dir()
 
-    # TDL path with prefill
     default_tdl = launcher_dir
     dlg = StringInputDialog(MAIN_ROOT, "TDL path", "Путь до TDL:", initialvalue=default_tdl, width=80)
     tdl_path = dlg.result if dlg.result and dlg.result.strip() != "" else default_tdl
@@ -274,7 +290,6 @@ def download_full_chat():
         messagebox.showerror("Ошибка", f"TDL path не найден: {tdl_path}")
         return
 
-    # Media directory with prefill
     default_media = launcher_dir
     dlg2 = StringInputDialog(MAIN_ROOT, "Media directory", "Директория для сохранения:", initialvalue=default_media, width=80)
     media_dir = dlg2.result if dlg2.result and dlg2.result.strip() != "" else default_media
@@ -282,7 +297,6 @@ def download_full_chat():
         messagebox.showerror("Ошибка", f"Media directory не найден: {media_dir}")
         return
 
-    # Telegram message URL
     while True:
         msg_url = simpledialog.askstring("Ссылка на сообщение", "Введите Telegram message URL (https://t.me/c/12345678/123 или https://t.me/username/123):", parent=MAIN_ROOT)
         if not msg_url:
@@ -292,7 +306,6 @@ def download_full_chat():
             break
         messagebox.showwarning("Неправильный формат", "Ожидается https://t.me/c/12345678/123 или https://t.me/username/123.")
 
-    # downloadLimit
     while True:
         dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, "Лимит задач", "Макс concurrent download tasks (1-10) [default 2]:", initialvalue=2, minvalue=1, maxvalue=10)
         dl_limit = dl_limit_dlg.result
@@ -301,7 +314,6 @@ def download_full_chat():
         if 1 <= dl_limit <= 10:
             break
 
-    # threads
     while True:
         threads_dlg = IntegerInputDialog(MAIN_ROOT, "Потоки", "Max threads per task (1-8) [default 4]:", initialvalue=4, minvalue=1, maxvalue=8)
         threads = threads_dlg.result
@@ -343,20 +355,23 @@ def build_ui():
     btn_update = tk.Button(frm, text="УСТАНОВИТЬ/ОБНОВИТЬ TDL", width=35, command=install_update_tdl)
     btn_update.grid(row=1, column=0, pady=4, padx=4)
 
+    btn_login = tk.Button(frm, text="ЛОГИН В TELEGRAM", width=35, command=login_telegram)
+    btn_login.grid(row=2, column=0, pady=4, padx=4)
+
     btn_single = tk.Button(frm, text="СКАЧАТЬ ОДИНОЧНЫЙ ФАЙЛ", width=35, command=download_single_file)
-    btn_single.grid(row=2, column=0, pady=4, padx=4)
+    btn_single.grid(row=3, column=0, pady=4, padx=4)
 
     btn_range = tk.Button(frm, text="СКАЧАТЬ ДИАПАЗОН ПОСТОВ", width=35, command=download_range)
-    btn_range.grid(row=3, column=0, pady=4, padx=4)
+    btn_range.grid(row=4, column=0, pady=4, padx=4)
 
     btn_full = tk.Button(frm, text="СКАЧАТЬ ВСЁ ИЗ ЧАТА", width=35, command=download_full_chat)
-    btn_full.grid(row=4, column=0, pady=4, padx=4)
+    btn_full.grid(row=5, column=0, pady=4, padx=4)
 
     btn_exit = tk.Button(frm, text="ВЫХОД", width=35, command=root.destroy)
-    btn_exit.grid(row=5, column=0, pady=(12,4), padx=4)
+    btn_exit.grid(row=6, column=0, pady=(12,4), padx=4)
 
     hint = tk.Label(frm, text="PowerShell-окна остаются открытыми для просмотра/ввода параметров.", font=("Segoe UI", 8), fg="gray")
-    hint.grid(row=6, column=0, columnspan=2, pady=(8,0))
+    hint.grid(row=7, column=0, columnspan=2, pady=(8,0))
 
     root.mainloop()
 

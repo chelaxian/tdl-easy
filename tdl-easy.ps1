@@ -397,32 +397,60 @@ while ($currentId -le $endId) {
         }
         $output | Out-File -FilePath $logFile -Append
 
-        if ($output -match "done!") {
-            Write-Host "🟢 Successfully downloaded: $pair" -ForegroundColor Green
-            foreach ($id in $batch) {
-                $downloadedFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -gt 0 }
-                if ($downloadedFile) { Write-Host "✅ Downloaded $($downloadedFile.Name)" -ForegroundColor Green }
+        # Check each index individually for success or failure
+        $successfulIds = @()
+        $failedIds = @()
+        foreach ($id in $batch) {
+            $downloadedFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -gt 0 -and $_.Extension -ne ".tmp" }
+            if ($downloadedFile) {
+                $successfulIds += $id
+                Write-Host "✅ Downloaded $($downloadedFile.Name) for index $id" -ForegroundColor Green
                 Save-ProcessedId $id
-            }
-            $retryCount = 0
-        } else {
-            Write-Host "🔴 Error downloading: $pair" -ForegroundColor Red
-            foreach ($id in $batch) {
-                $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -eq 0 }
-                if ($incompleteFile) { Remove-Item -Path $incompleteFile.FullName -Force; Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red }
+            } else {
+                $failedIds += $id
+                Write-Host "🔴 Failed to download index $id (may be deleted or empty)" -ForegroundColor Red
                 Save-ErrorId $id
             }
+        }
+
+        # Clean up any incomplete (zero-byte) files
+        foreach ($id in $batch) {
+            $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -eq 0 }
+            if ($incompleteFile) {
+                Remove-Item -Path $incompleteFile.FullName -Force
+                Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red
+            }
+        }
+
+        # Summarize the batch result
+        if ($successfulIds.Count -gt 0 -and $failedIds.Count -eq 0) {
+            Write-Host "🟢 Successfully downloaded indexes: $($successfulIds -join ',')" -ForegroundColor Green
+        } elseif ($successfulIds.Count -gt 0 -and $failedIds.Count -gt 0) {
+            Write-Host "🟡 Partial success for batch: $($successfulIds -join ',') downloaded; $($failedIds -join ',') failed" -ForegroundColor Yellow
+        } else {
+            Write-Host "🔴 All indexes failed: $($failedIds -join ',')" -ForegroundColor Red
             $retryCount++
             if ($retryCount -ge $maxRetries) {
                 Write-Host "🔴 Exceeded max retries ($maxRetries) for: $pair" -ForegroundColor Red
                 $currentId = $batch[-1] + 1
+                $retryCount = 0
+                continue
+            } else {
+                Write-Host "🔶 Retrying batch: $pair" -ForegroundColor Yellow
+                continue
             }
         }
+        $retryCount = 0
+        $currentId = $batch[-1] + 1
     } catch {
         Write-Host "🔴 Error executing command for: $pair - $_" -ForegroundColor Red
         foreach ($id in $batch) {
             $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_.*" -and $_.Length -eq 0 }
-            if ($incompleteFile) { Remove-Item -Path $incompleteFile.FullName -Force; Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red }
+            if ($incompleteFile) {
+                Remove-Item -Path $incompleteFile.FullName -Force
+                Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red
+            }
+            Write-Host "🔴 Failed to download index $id (command error)" -ForegroundColor Red
             Save-ErrorId $id
         }
         $_ | Out-File -FilePath $logFile -Append
@@ -430,13 +458,10 @@ while ($currentId -le $endId) {
         if ($retryCount -ge $maxRetries) {
             Write-Host "🔴 Exceeded max retries ($maxRetries) for: $pair" -ForegroundColor Red
             $currentId = $batch[-1] + 1
+            $retryCount = 0
+        } else {
+            Write-Host "🔶 Retrying batch: $pair" -ForegroundColor Yellow
         }
-    }
-
-    if ($output -match "done!" -or $retryCount -ge $maxRetries) {
-        $currentId = $batch[-1] + 1
-    } else {
-        Write-Host "🔶 Retrying batch: $pair" -ForegroundColor Yellow
     }
 }
 

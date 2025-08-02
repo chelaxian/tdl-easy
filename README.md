@@ -6,10 +6,10 @@ PowerShell script to simplify downloading Telegram media from private groups/cha
 
 ## Getting started
 
-1. download `tdl-updater.ps1` and `tdl-easy.ps1` to your windows x64 PC/laptop
+1. download `tdl-updater.ps1` and `tdl-easy-range.ps1` to your windows x64 PC/laptop
 2. run Telegram client, open `cmd.exe` and run `powershell` (or directly open `powershell.exe`)
 3. locate in powershell via `cd C:\PATH\TO\YOUR\FOLDER` command to scripts directory  and run `.\tdl-updater.ps1` to download/update `tdl.exe`
-4. run `.\tdl-easy.ps1` and follow interactive wizard to set up and start downloading.
+4. run `.\tdl-easy-range.ps1` and follow interactive wizard to set up and start downloading.
 
 ---
 
@@ -59,7 +59,7 @@ Enter max threads per task (-t, 1 to 8) [default: 4]
 ```
 ---
 
-## tdl-easy running status view
+## tdl-easy-range running status view
 ```powershell
 ℹ️ Using PowerShell version: 5.1.27695.1000
 📜 Loaded 1 processed indexes from C:\Users\admin\Desktop\tdl\processed.txt
@@ -90,7 +90,7 @@ Example Telegram Channel(1234567890):105 ~ ... done! [694.96 MB in 5m17.31s; 2.1
 ✅ Downloaded 1234567890_105_Example Telegram Channel 108.mp4
 ```
 ---
-## tdl-easy updater view
+## tdl-easy-range updater view
 
 ```powershell
 PS C:\Users\admin\Desktop\tdl> .\tdl_updater.ps1

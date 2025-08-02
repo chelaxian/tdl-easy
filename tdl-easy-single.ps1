@@ -112,7 +112,7 @@ if (-not $useSaved) {
             continue
         }
         if ($input -notmatch '^https?://t\.me/(?:(?:c/\d+/\d+)|(?:s/[A-Za-z0-9_]{5,32}/\d+)|(?:[A-Za-z0-9_]{5,32}/\d+))/?$') {
-            Write-Host "🔴 Error: URL must be of form https://t.me/c/12345678/123 exactly." -ForegroundColor Red
+            Write-Host "🔴 Error: URL must be of form https://t.me/c/12345678/123 or https://t.me/abc/123." -ForegroundColor Red
             continue
         }
         $telegramMessageUrl = $input

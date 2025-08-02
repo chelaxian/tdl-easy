@@ -18,22 +18,32 @@ if (-not (Test-Path ".\tdl.exe")) {
     exit
 }
 
-# Interactive input for Telegram URL
+# Interactive input for Telegram URL (including topic links like https://t.me/c/2267448302/166/4857)
 do {
     Write-Host "";
     Write-Host "╔════════════════════ TELEGRAM URL CONFIGURATION ════════════════════════════╗" -ForegroundColor DarkGray
-    Write-Host "║ Examples: https://t.me/c/12345678/123 or https://t.me/abc/123" -ForegroundColor Gray
+    Write-Host "║ Examples: https://t.me/c/12345678/123 or https://t.me/abc/123 or https://t.me/c/2267448302/166/4857" -ForegroundColor Gray
     Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
-    Write-Host "Copy link to Telegram post and Paste it here (look at examples of URL👆)"
+    Write-Host "Copy link to Telegram post (with or without topic) and paste it here"
     $telegramUrl = Read-Host
+
     if ([string]::IsNullOrWhiteSpace($telegramUrl)) {
         Write-Host "🔴 Error: URL cannot be empty." -ForegroundColor Red
         continue
     }
-    if ($telegramUrl -notmatch '^https?://t\.me/(c/\d+/\d+|[\w_]+/\d+)$') {
-        Write-Host "🔴 Error: URL must be of form https://t.me/c/12345678/123 or https://t.me/abc/123 exactly." -ForegroundColor Red
+
+    # normalize: strip trailing slash
+    $telegramUrl = $telegramUrl.TrimEnd('/')
+
+    # Accept:
+    # - public username message: https://t.me/username/123
+    # - internal channel message: https://t.me/c/12345678/123
+    # - forum topic message: https://t.me/c/12345678/<topic_id>/<message_id>
+    if ($telegramUrl -notmatch '^https?://t\.me/(?:c/\d+/\d+(?:/\d+)?|[A-Za-z0-9_]+/\d+)$') {
+        Write-Host "🔴 Error: URL must be one of forms: https://t.me/c/12345678/123 , https://t.me/abc/123 or topic link like https://t.me/c/2267448302/166/4857" -ForegroundColor Red
         continue
     }
+
     break
 } while ($true)
 Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray

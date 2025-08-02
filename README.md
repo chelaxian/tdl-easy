@@ -9,7 +9,7 @@ PowerShell script to simplify downloading Telegram media from public/private gro
 1. download `tdl-updater.ps1` and `tdl-easy-range.ps1` and `tdl-easy-full.ps1` to your windows x64 PC/laptop
 2. run Telegram client, open `cmd.exe` and run `powershell` (or directly open `powershell.exe`)
 3. locate in powershell via `cd C:\PATH\TO\YOUR\FOLDER` command to scripts directory  and run `.\tdl-updater.ps1` to download/update `tdl.exe`
-4. run `.\tdl.exe login` and choose your Telegram ID
+4. run `.\tdl.exe login` and choose your Telegram ID and say `No` when asking about logout.
 5. run `.\tdl-easy-range.ps1` or `.\tdl-easy-full.ps1` and follow interactive wizard to set up and start downloading.
 
 ---

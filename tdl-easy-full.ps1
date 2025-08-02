@@ -145,7 +145,7 @@ if (-not $useSaved) {
             Write-Host "╔════════════════════ TELEGRAM MESSAGE URL CONFIGURATION ════════════════════╗" -ForegroundColor DarkGray
             Write-Host "║ Example: https://t.me/c/12345678/123 or https://t.me/username/123" -ForegroundColor Gray
             Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
-            Write-Host "Copy-Paste any message URL from the group/channel" 
+            Write-Host "Copy-Paste any message URL from the group/channel"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
                 Write-Host "🔴 Error: URL cannot be empty." -ForegroundColor Red
@@ -306,6 +306,9 @@ function Save-ErrorId($id) {
     $id | Out-File -FilePath $errorFile -Append
 }
 
+# track if any successful download occurred
+$anySuccess = $false
+
 # Export all messages to tdl-export.json (supports both numeric internal and username)
 $exportCommand = ".\tdl.exe chat export -c $channelId --with-content -o `"$exportFile`""
 Write-Host "🟡 Starting export for chat ID: $channelId" -ForegroundColor Yellow
@@ -385,9 +388,11 @@ while ($retryCount -lt $maxRetries) {
         # Summarize the batch result
         if ($successfulIds.Count -gt 0 -and $failedIds.Count -eq 0) {
             Write-Host "🟢 Successfully downloaded indexes: $($successfulIds -join ',')" -ForegroundColor Green
+            $anySuccess = $true
             break
         } elseif ($successfulIds.Count -gt 0 -and $failedIds.Count -gt 0) {
             Write-Host "🟡 Partial success: $($successfulIds -join ',') downloaded; $($failedIds -join ',') failed" -ForegroundColor Yellow
+            $anySuccess = $true
             break
         } elseif ($failedIds.Count -gt 0) {
             Write-Host "🔴 Failed indexes: $($failedIds -join ',')" -ForegroundColor Red
@@ -439,6 +444,16 @@ if (Test-Path $processedFile) {
 if (Test-Path $errorFile) {
     Remove-Item -Path $errorFile -Force
     Write-Host "🗑️ File $errorFile deleted after completion." -ForegroundColor Cyan
+}
+
+# Auto-open folder if any successful download happened
+if ($anySuccess) {
+    Write-Host "📂 Opening download folder: $mediaDir" -ForegroundColor Cyan
+    try {
+        Start-Process explorer.exe -ArgumentList $mediaDir
+    } catch {
+        Write-Host "⚠️ Не удалось открыть папку: $_" -ForegroundColor Yellow
+    }
 }
 
 Write-Host "🎉 Completed! All indexes processed." -ForegroundColor Cyan

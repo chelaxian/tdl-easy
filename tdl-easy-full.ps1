@@ -1,31 +1,17 @@
+
 # Interrupt handling: clean exit on Ctrl+C
 trap [System.OperationCanceledException] {
     Write-Host "`n[!] Interrupted by user." -ForegroundColor Yellow
     exit
 }
 
-# PowerShell version detection and emoji compatibility
-function Get-PSVersion {
-    try {
-        return $PSVersionTable.PSVersion.Major
-    } catch {
-        return 5  # Default to 5 if detection fails
-    }
-}
-
+# Simple colored output function
 function Write-Emoji {
     param(
         [string]$Text,
         [string]$Color = "White"
     )
-    $psVersion = Get-PSVersion
-    if ($psVersion -ge 7) {
-        Write-Host $Text -ForegroundColor $Color
-    } else {
-        # Replace emojis with ASCII equivalents for PS 5.x
-        $asciiText = $Text -replace "⚠️", "[!]" -replace "ℹ️", "[i]" -replace "🟡", "[*]" -replace "🟢", "[+]" -replace "🔴", "[x]" -replace "📜", "[f]" -replace "📂", "[d]" -replace "⏭️", "[s]" -replace "📋", "[c]" -replace "✅", "[ok]" -replace "🗑️", "[del]" -replace "🎉", "[done]"
-        Write-Host $asciiText -ForegroundColor $Color
-    }
+    Write-Host $Text -ForegroundColor $Color
 }
 
 #################################################################################################################################################
@@ -124,9 +110,9 @@ if (-not $useSaved) {
         # TDL path
         do {
             Write-Host "";
-            Write-Host "╔════════════════════ TDL PATH CONFIGURATION ════════════════════════════════╗" -ForegroundColor DarkGray
-            Write-Host "║ Default: $defaultTdl" -ForegroundColor Gray
-            Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
+            Write-Host "+================================ TDL PATH CONFIGURATION ================================+" -ForegroundColor DarkGray
+            Write-Host "| Default: $defaultTdl" -ForegroundColor Gray
+            Write-Host "+----------------------------------------------------------------------------------------+" -ForegroundColor DarkGray
             Write-Host "Enter the TDL path (e.g., D:\tdl, no trailing slash)"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
@@ -140,14 +126,14 @@ if (-not $useSaved) {
             }
             break
         } while ($true)
-        Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
+        Write-Host "+===============================================================================+" -ForegroundColor DarkGray
 
         # Media directory
         do {
             Write-Host "";
-            Write-Host "╔══════════════════ MEDIA DIRECTORY CONFIGURATION ═══════════════════════════╗" -ForegroundColor DarkGray
-            Write-Host "║ Default: $defaultMedia" -ForegroundColor Gray
-            Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
+            Write-Host "+============================= MEDIA DIRECTORY CONFIGURATION =============================" -ForegroundColor DarkGray
+            Write-Host "| Default: $defaultMedia" -ForegroundColor Gray
+            Write-Host "+----------------------------------------------------------------------------------------+" -ForegroundColor DarkGray
             Write-Host "Enter the directory for saving media files (e.g., D:\tdl\videos)"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
@@ -161,14 +147,14 @@ if (-not $useSaved) {
             }
             break
         } while ($true)
-        Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
+        Write-Host "+===============================================================================+" -ForegroundColor DarkGray
 
         # Telegram message URL (supports topic message like https://t.me/c/2267448302/166/4857)
         do {
             Write-Host "";
-            Write-Host "╔════════════════════ TELEGRAM MESSAGE URL CONFIGURATION ════════════════════╗" -ForegroundColor DarkGray
-            Write-Host "║Example: https://t.me/c/123/ or https://t.me/abc/ or https://t.me/c/123/456/" -ForegroundColor Gray
-            Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
+            Write-Host "+============================= TELEGRAM MESSAGE URL CONFIGURATION ========================" -ForegroundColor DarkGray
+            Write-Host "|Example: https://t.me/c/123/ or https://t.me/abc/ or https://t.me/c/123/456/" -ForegroundColor Gray
+            Write-Host "+----------------------------------------------------------------------------------------+" -ForegroundColor DarkGray
             Write-Host "Copy-Paste any message URL from the group/channel/topic"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
@@ -184,14 +170,14 @@ if (-not $useSaved) {
             $telegramMessageUrl = $input
             break
         } while ($true)
-        Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
+        Write-Host "+===============================================================================+" -ForegroundColor DarkGray
 
         # Concurrency settings
         do {
             Write-Host "";
-            Write-Host "╔════════════════ CONCURRENCY CONFIGURATION ═════════════════════════════════╗" -ForegroundColor DarkGray
-            Write-Host "║ Defaults: downloadLimit=2, threads=4, maxRetries=1" -ForegroundColor Gray
-            Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
+            Write-Host "+=============================== CONCURRENCY CONFIGURATION ===============================" -ForegroundColor DarkGray
+            Write-Host "| Defaults: downloadLimit=2, threads=4, maxRetries=1" -ForegroundColor Gray
+            Write-Host "+----------------------------------------------------------------------------------------+" -ForegroundColor DarkGray
             Write-Host "Enter max concurrent download tasks (-l, 1 to 10) [default: 2]"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
@@ -229,7 +215,7 @@ if (-not $useSaved) {
             }
             Write-Emoji "[x] Error: Please enter a valid integer between 1 and 5 for max retries." "Red"
         } while ($true)
-        Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
+        Write-Host "+===============================================================================+" -ForegroundColor DarkGray
 
         # Persist all collected values atomically
         $toSave = @{ 
@@ -290,8 +276,7 @@ if (-not (Test-Path -LiteralPath $tdlExePath)) {
 Set-Location -Path $tdl_path
 
 # PowerShell version info
-$psVersion = Get-PSVersion
-Write-Emoji "[i] Using PowerShell version: $psVersion" "Cyan"
+Write-Emoji "[i] Starting download process..." "Cyan"
 
 # Load already processed and error indexes
 $processedIds = @()

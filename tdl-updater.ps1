@@ -1,170 +1,135 @@
-<#
-    tdl-updater.ps1
-
-    Installs or updates the `tdl.exe` binary from the iyear/tdl GitHub releases.
-    Automatically replaces the `$currentVersion` string in this script upon a successful update.
-#>
-
-# =============================================================================
 # Parameters
-# =============================================================================
-
-# Current version of tdl; will be replaced in this file when we update
-$currentVersion = "v0.19.0"
-
-# Path where this script is located and where tdl.exe should live
-$tdlPath        = $PSScriptRoot
-
-# GitHub "latest release" redirect URL
+$currentVersion = "v0.19.0"  # Current version of tdl, to be updated if a newer version is found
+$tdlPath = $PSScriptRoot     # Path where the script is running, used as the target for update
 $latestReleaseUrl = "https://github.com/iyear/tdl/releases/latest"
+$downloadBaseUrl = "https://github.com/iyear/tdl/releases/download/"
 
-# Base URL to download specific version zips
-$downloadBaseUrl  = "https://github.com/iyear/tdl/releases/download/"
-
-# =============================================================================
-# Helpers
-# =============================================================================
-
-# Path to the tdl.exe we're managing
+# Helper: path to expected executable
 $tdlExe = Join-Path $tdlPath 'tdl.exe'
 
-function Write-Info($msg) { Write-Host "ℹ️  $msg" -ForegroundColor Cyan }
-function Write-Warn($msg) { Write-Host "⚠️  $msg" -ForegroundColor Yellow }
-function Write-ErrorLine($msg) { Write-Host "❌  $msg" -ForegroundColor Red }
-
-# =============================================================================
-# Retrieve the latest release tag from GitHub
-# =============================================================================
+# Function to get the latest version from GitHub
 function Get-LatestVersion {
     try {
-        Write-Info "Checking GitHub for latest release..."
-        $resp = Invoke-WebRequest -Uri $latestReleaseUrl -MaximumRedirection 0 -ErrorAction Stop
-        # GitHub will 302 Redirect; the Location header ends in /tagName
-        $location = $resp.Headers['Location']
-        if (-not $location) {
-            # fallback to following redirect
-            $resp = Invoke-WebRequest -Uri $latestReleaseUrl -ErrorAction Stop
-            $location = $resp.BaseResponse.ResponseUri.AbsoluteUri
-        }
-        $tag = ($location -split '/')[-1]
-        Write-Info "Latest release on GitHub is $tag"
-        return $tag
+        $response = Invoke-WebRequest -Uri $latestReleaseUrl -ErrorAction Stop
+        $latestVersion = ($response.BaseResponse.ResponseUri -split '/' | Select-Object -Last 1)
+        return $latestVersion  # Includes leading 'v'
     } catch {
-        Write-Warn "Failed to fetch latest release info: $_"
+        Write-Error "❌ Failed to fetch latest version info: $_"
         return $null
     }
 }
 
-# =============================================================================
-# Download, extract and install the specified version
-# =============================================================================
+# Function to download and extract the update
 function Update-Tdl {
-    param(
-        [Parameter(Mandatory)]
-        [string]$newVersion
-    )
+    param ([string]$newVersion)
 
     if (-not $newVersion) {
-        Write-ErrorLine "No version supplied to install/update."
+        Write-Error "❌ No version provided to update."
         return $false
     }
 
-    $zipUrl     = "$downloadBaseUrl$newVersion/tdl_Windows_64bit.zip"
-    $tempZip    = Join-Path $tdlPath 'tdl_update.zip'
-    $tempFolder = Join-Path $tdlPath 'tdl_update_tmp'
+    $downloadUrl = "$downloadBaseUrl$newVersion/tdl_Windows_64bit.zip"
+    $tempZip = Join-Path $tdlPath 'tdl_update.zip'
+    $tempExtract = Join-Path $tdlPath 'tdl_update_temp'
 
     try {
-        Write-Info "Downloading tdl $newVersion from $zipUrl …"
-        Invoke-WebRequest -Uri $zipUrl -OutFile $tempZip -ErrorAction Stop
-        Write-Info "Archive saved to $tempZip"
+        Write-Host "⬇️ Downloading update for version $newVersion..."
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -ErrorAction Stop
+        Write-Host "✅ Downloaded update archive to $tempZip"
 
-        Write-Info "Extracting archive to $tempFolder …"
-        if (Test-Path $tempFolder) { Remove-Item $tempFolder -Recurse -Force }
-        Expand-Archive -LiteralPath $tempZip -DestinationPath $tempFolder -Force
-        Write-Info "Extraction complete."
+        Write-Host "📦 Extracting update..."
+        if (Test-Path $tempExtract) { Remove-Item -Path $tempExtract -Recurse -Force }
+        Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
+        Write-Host "✅ Extracted update to temporary folder"
 
-        Write-Info "Copying new files into $tdlPath …"
-        Get-ChildItem -Path $tempFolder -Recurse |
-            ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $tdlPath -Force }
-        Write-Info "Installation complete."
+        Write-Host "🛠 Replacing files in current directory..."
+        Get-ChildItem -Path $tempExtract -Recurse | Copy-Item -Destination $tdlPath -Force -Recurse
+        Write-Host "✅ Replacement complete"
 
-        Write-Info "Cleaning up temporary files …"
-        Remove-Item $tempZip -Force
-        Remove-Item $tempFolder -Recurse -Force
-        Write-Info "Cleanup done."
+        Write-Host "🧹 Cleaning up temporary files..."
+        Remove-Item -Path $tempZip -Force
+        Remove-Item -Path $tempExtract -Recurse -Force
+        Write-Host "✅ Cleanup done"
 
-        # Open the folder so user can see the new binary
-        Start-Process explorer.exe -ArgumentList $tdlPath
+        Write-Host "✅ Update to version $newVersion completed successfully!"
 
-        # =============================================================================
-        # Rewrite the $currentVersion line in this script to the newly installed version
-        # =============================================================================
-        $scriptPath = $PSCommandPath
-        Write-Info "Updating script version marker in $scriptPath …"
-        $pattern     = '^(?<pre>\$currentVersion\s*=\s*")v[\d\.]+(?<post>")'
-        $replacement = '${pre}' + $newVersion + '${post}'
-        $allText = Get-Content -LiteralPath $scriptPath -Raw
-        $newText = $allText -replace $pattern, $replacement
-        if ($newText -ne $allText) {
-            Set-Content -LiteralPath $scriptPath -Value $newText -Encoding UTF8
-            Write-Info "Script version updated to $newVersion."
-        } else {
-            Write-Warn "Could not locate \$currentVersion line to update."
+        # Auto-open folder with updated binary
+        Write-Host "📂 Opening updated folder: $tdlPath" -ForegroundColor Cyan
+        try {
+            Start-Process explorer.exe -ArgumentList $tdlPath
+        } catch {
+            Write-Host "⚠️ Failed to open folder: $_" -ForegroundColor Yellow
         }
 
+        # Update the version in the script file (replace only the value inside quotes)
+        $pattern = '(\$currentVersion\s*=\s*")v[\d\.]+(")'
+        $replacement = '$1' + $newVersion + '$2'
+        (Get-Content $PSCommandPath) -replace $pattern, $replacement | Set-Content $PSCommandPath
+
         return $true
-    }
-    catch {
-        Write-ErrorLine "Update failed: $_"
-        # cleanup partial
-        if (Test-Path $tempZip)    { Remove-Item $tempZip -Force }
-        if (Test-Path $tempFolder) { Remove-Item $tempFolder -Recurse -Force }
+    } catch {
+        Write-Error "❌ Update failed: $_"
+        # cleanup partial if exists
+        if (Test-Path $tempZip) { Remove-Item -Path $tempZip -Force }
+        if (Test-Path $tempExtract) { Remove-Item -Path $tempExtract -Recurse -Force }
         return $false
     }
 }
 
-# =============================================================================
-# Main logic: decide whether to install/update
-# =============================================================================
+# Check for updates / presence of binary
 $latestVersion = Get-LatestVersion
+Write-Host "Current version: $currentVersion"
+Write-Host "Latest version: $latestVersion"
 
-Write-Host ""
-Write-Host "Current script version: $currentVersion"
-if ($latestVersion) {
-    Write-Host "Latest GitHub version:   $latestVersion"
-} else {
-    Write-Host "Latest GitHub version:   (unavailable)"
+$tdlMissing = -not (Test-Path $tdlExe)
+if ($tdlMissing) {
+    Write-Host "🟡 tdl.exe not found in $tdlPath. Will download/install latest version."
 }
 
 $needUpdate = $false
-if (-not (Test-Path $tdlExe)) {
-    Write-Warn "tdl.exe is not present; will install version $($latestVersion ?? $currentVersion)."
-    $needUpdate = $true
-}
-elseif ($latestVersion) {
-    try {
-        $cmp = [version]($currentVersion.TrimStart('v')) -lt [version]($latestVersion.TrimStart('v'))
-        if ($cmp) {
-            Write-Warn "A newer version is available: $latestVersion. Beginning update."
-            $needUpdate = $true
-        } else {
-            Write-Info "You already have the latest version ($currentVersion) and tdl.exe is present."
+if ($latestVersion) {
+    $versionCompare = {
+        param($a, $b)
+        try {
+            return [version]($a -replace '^v', '') -lt [version]($b -replace '^v', '')
+        } catch {
+            return $true  # if parsing fails, be conservative and update
         }
-    } catch {
-        Write-Warn "Version comparison failed; proceeding to update."
+    }
+
+    if (&$versionCompare $currentVersion $latestVersion) {
+        Write-Host "🟡 A newer version ($latestVersion) is available. Updating now..."
         $needUpdate = $true
+    } elseif ($tdlMissing) {
+        Write-Host "🟡 Binary missing but version marker is current. Proceeding to download $latestVersion..."
+        $needUpdate = $true
+    } else {
+        Write-Host "✅ Version is up-to-date and tdl.exe exists."
     }
 } else {
-    Write-Warn "Cannot determine latest version; skipping update."
-}
-
-if ($needUpdate) {
-    $verToUse = $latestVersion ?? $currentVersion
-    if (-not (Update-Tdl -newVersion $verToUse)) {
-        Write-ErrorLine "tdl install/update failed."
-        exit 1
+    if ($tdlMissing) {
+        Write-Host "🟡 Unable to determine latest version from GitHub, but tdl.exe is missing - trying to download current version listed ($currentVersion)..."
+        $needUpdate = $true
+    } else {
+        Write-Host "ℹ️ Unable to retrieve latest version information, but tdl.exe is present. Skipping update."
     }
 }
 
-Write-Host ""
-Write-Info "tdl install/update routine complete."
+if ($needUpdate -and $latestVersion) {
+    $success = Update-Tdl -newVersion $latestVersion
+    if (-not $success) {
+        Write-Error "❌ Update failed."
+    } else {
+        Write-Host "✅ Update process finished."
+    }
+} elseif ($needUpdate -and -not $latestVersion) {
+    # Try fallback to currentVersion if latest unknown
+    $success = Update-Tdl -newVersion $currentVersion
+    if (-not $success) {
+        Write-Error "❌ Update from fallback version failed."
+    } else {
+        Write-Host "✅ Fallback update process finished."
+    }
+}
+
+Write-Host "✅ Update check completed."

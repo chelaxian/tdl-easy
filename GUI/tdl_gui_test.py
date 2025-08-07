@@ -7,14 +7,24 @@ import shutil
 import json
 import re
 
-# global reference to main root so dialogs can use it as parent
+# ==============================================================================
+# Globals and configuration
+# ==============================================================================
+
+# reference to main Tk window and main frame
 MAIN_ROOT = None
-# current UI language
+MAIN_FRAME = None
+
+# current UI language ('EN' or 'RU')
 LANG = 'EN'
 
-# menu texts for localization
+# widget references for easy text updates
+WIDGETS = {}
+
+# menu texts for both languages
 MENU_TEXT = {
     'EN': {
+        'title': 'TDL Easy Launcher',
         'menu': 'Menu:',
         'install_update': 'INSTALL/UPDATE TDL',
         'telegram_login': 'TELEGRAM LOGIN',
@@ -27,6 +37,7 @@ MENU_TEXT = {
         'button_ru': 'RU',
     },
     'RU': {
+        'title': 'TDL Easy Launcher',
         'menu': 'Меню:',
         'install_update': 'УСТАНОВИТЬ/ОБНОВИТЬ TDL',
         'telegram_login': 'ЛОГИН В TELEGRAM',
@@ -40,9 +51,14 @@ MENU_TEXT = {
     }
 }
 
+# ==============================================================================
+# Utility functions
+# ==============================================================================
 
 def resource_path(rel):
-    # Return absolute path to resource, works for dev and PyInstaller
+    """
+    Return absolute path to resource, works for dev and PyInstaller.
+    """
     if getattr(sys, 'frozen', False):
         base = sys._MEIPASS
     else:
@@ -51,7 +67,9 @@ def resource_path(rel):
 
 
 def get_launcher_dir():
-    # Return directory where this script/executable resides
+    """
+    Return directory where this script/executable resides.
+    """
     if getattr(sys, 'frozen', False):
         exe_path = os.path.abspath(sys.argv[0])
         return os.path.dirname(exe_path)
@@ -60,7 +78,9 @@ def get_launcher_dir():
 
 
 def get_powershell_version():
-    # Return major version of installed PowerShell, or 0 on error
+    """
+    Return major version of installed PowerShell, or 0 on error.
+    """
     try:
         output = subprocess.check_output(
             ['powershell.exe', '-NoProfile', '-Command', '$PSVersionTable.PSVersion.Major'],
@@ -93,7 +113,9 @@ def sanitize_script(script_path):
 
 
 def run_powershell_script(script_path, extra_command=None):
-    # Launch a PowerShell script; sanitize if PS version < 7
+    """
+    Launch a PowerShell script; sanitize if PS version < 7.
+    """
     if not os.path.isfile(script_path):
         messagebox.showerror('Error', f'Script not found: {os.path.basename(script_path)}')
         return
@@ -116,7 +138,9 @@ def run_powershell_script(script_path, extra_command=None):
 
 
 def ensure_and_copy(src_rel_name):
-    # Copy embedded resource script to launcher directory
+    """
+    Copy embedded resource script to launcher directory.
+    """
     launcher_dir = get_launcher_dir()
     src = resource_path(src_rel_name)
     dest = os.path.join(launcher_dir, src_rel_name)
@@ -127,6 +151,23 @@ def ensure_and_copy(src_rel_name):
         return None
     return dest
 
+
+def write_state_json(path, obj):
+    """
+    Write JSON state file for PS scripts.
+    """
+    try:
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(obj, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        messagebox.showerror('Error', str(e))
+        return False
+    return True
+
+
+# ==============================================================================
+# Dialog classes
+# ==============================================================================
 
 class StringInputDialog(simpledialog.Dialog):
     def __init__(self, parent, title, prompt, initialvalue='', width=80):
@@ -185,19 +226,14 @@ class IntegerInputDialog(simpledialog.Dialog):
             self.result = None
 
 
-def write_state_json(path, obj):
-    # Write JSON state file for PSL scripts
-    try:
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(obj, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        messagebox.showerror('Error', str(e))
-        return False
-    return True
-
+# ==============================================================================
+# TDL actions
+# ==============================================================================
 
 def make_autoyes_wrapper(original_name, wrapper_name):
-    # Create wrapper answering 'Yes' automatically to Read-Host prompts
+    """
+    Create wrapper answering 'Yes' automatically to Read-Host prompts.
+    """
     launcher_dir = get_launcher_dir()
     original = ensure_and_copy(original_name)
     if not original:
@@ -220,7 +256,9 @@ function Read-Host {{
 
 
 def install_update_tdl():
-    # Handle INSTALL/UPDATE TDL action
+    """
+    Handle INSTALL/UPDATE TDL action.
+    """
     updater = ensure_and_copy('tdl-updater.ps1')
     if not updater:
         return
@@ -228,7 +266,9 @@ def install_update_tdl():
 
 
 def login_telegram():
-    # Handle TELEGRAM LOGIN action
+    """
+    Handle TELEGRAM LOGIN action.
+    """
     launcher_dir = get_launcher_dir()
     tdl_exe = os.path.join(launcher_dir, 'tdl.exe')
     if not os.path.isfile(tdl_exe):
@@ -252,7 +292,9 @@ def login_telegram():
 
 
 def download_single_file():
-    # Handle DOWNLOAD SINGLE FILE action
+    """
+    Handle DOWNLOAD SINGLE FILE action.
+    """
     url = simpledialog.askstring(
         MENU_TEXT[LANG]['download_single'],
         'Paste the message link (https://t.me/...):',
@@ -287,17 +329,19 @@ def download_single_file():
 
 
 def download_range():
-    # Handle DOWNLOAD POSTS RANGE action
+    """
+    Handle DOWNLOAD POSTS RANGE action.
+    """
     launcher_dir = get_launcher_dir()
     default_tdl = launcher_dir
     dlg = StringInputDialog(MAIN_ROOT, 'TDL path', 'Path to TDL:', initialvalue=default_tdl, width=80)
-    tdl_path = dlg.result if dlg.result and dlg.result.strip() != '' else default_tdl
+    tdl_path = dlg.result if dlg.result and dlg.result.strip() else default_tdl
     if not os.path.exists(tdl_path):
         messagebox.showerror('Error', f'TDL path not found: {tdl_path}')
         return
 
     dlg2 = StringInputDialog(MAIN_ROOT, 'Media directory', 'Directory to save into:', initialvalue=launcher_dir, width=80)
-    media_dir = dlg2.result if dlg2.result and dlg2.result.strip() != '' else launcher_dir
+    media_dir = dlg2.result if dlg2.result and dlg2.result.strip() else launcher_dir
     if not os.path.exists(media_dir):
         messagebox.showerror('Error', f'Media directory not found: {media_dir}')
         return
@@ -376,17 +420,19 @@ def download_range():
 
 
 def download_full_chat():
-    # Handle DOWNLOAD FULL CHAT action
+    """
+    Handle DOWNLOAD FULL CHAT action.
+    """
     launcher_dir = get_launcher_dir()
     default_tdl = launcher_dir
     dlg = StringInputDialog(MAIN_ROOT, 'TDL path', 'Path to TDL:', initialvalue=default_tdl, width=80)
-    tdl_path = dlg.result if dlg.result and dlg.result.strip() != '' else default_tdl
+    tdl_path = dlg.result if dlg.result and dlg.result.strip() else default_tdl
     if not os.path.exists(tdl_path):
         messagebox.showerror('Error', f'TDL path not found: {tdl_path}')
         return
 
     dlg2 = StringInputDialog(MAIN_ROOT, 'Media directory', 'Directory to save into:', initialvalue=launcher_dir, width=80)
-    media_dir = dlg2.result if dlg2.result and dlg2.result.strip() != '' else launcher_dir
+    media_dir = dlg2.result if dlg2.result and dlg2.result.strip() else launcher_dir
     if not os.path.exists(media_dir):
         messagebox.showerror('Error', f'Media directory not found: {media_dir}')
         return
@@ -440,59 +486,102 @@ def download_full_chat():
     run_powershell_script(wrapper)
 
 
+# ==============================================================================
+# UI construction and language switching
+# ==============================================================================
+
+def build_widgets():
+    """
+    Create and grid all widgets inside MAIN_FRAME.
+    """
+    global WIDGETS
+
+    # clear any existing children
+    for w in MAIN_FRAME.winfo_children():
+        w.destroy()
+
+    # EN/RU toggle buttons side by side
+    btn_en = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['button_en'], width=4,
+                       command=lambda: switch_language('EN'))
+    btn_ru = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['button_ru'], width=4,
+                       command=lambda: switch_language('RU'))
+    btn_en.grid(row=0, column=0, padx=(0,2), sticky='w')
+    btn_ru.grid(row=0, column=1, padx=(2,0), sticky='w')
+
+    # Menu label
+    lbl_menu = tk.Label(MAIN_FRAME, text=MENU_TEXT[LANG]['menu'], font=('Segoe UI', 14, 'bold'))
+    lbl_menu.grid(row=1, column=0, columnspan=2, pady=(8,12), sticky='w')
+
+    # Action buttons
+    btn_update = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['install_update'], width=35,
+                           command=install_update_tdl)
+    btn_update.grid(row=2, column=0, columnspan=2, pady=4)
+
+    btn_login = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['telegram_login'], width=35,
+                          command=login_telegram)
+    btn_login.grid(row=3, column=0, columnspan=2, pady=4)
+
+    btn_single = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['download_single'], width=35,
+                           command=download_single_file)
+    btn_single.grid(row=4, column=0, columnspan=2, pady=4)
+
+    btn_range = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['download_range'], width=35,
+                          command=download_range)
+    btn_range.grid(row=5, column=0, columnspan=2, pady=4)
+
+    btn_full = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['download_full'], width=35,
+                         command=download_full_chat)
+    btn_full.grid(row=6, column=0, columnspan=2, pady=4)
+
+    btn_exit = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['exit'], width=35,
+                         command=MAIN_ROOT.destroy)
+    btn_exit.grid(row=7, column=0, columnspan=2, pady=(12,4))
+
+    hint = tk.Label(MAIN_FRAME, text=MENU_TEXT[LANG]['hint'], font=('Segoe UI', 8), fg='gray')
+    hint.grid(row=8, column=0, columnspan=2, pady=(8,0))
+
+    # store references
+    WIDGETS.update({
+        'btn_en': btn_en,
+        'btn_ru': btn_ru,
+        'lbl_menu': lbl_menu,
+        'btn_update': btn_update,
+        'btn_login': btn_login,
+        'btn_single': btn_single,
+        'btn_range': btn_range,
+        'btn_full': btn_full,
+        'btn_exit': btn_exit,
+        'hint': hint,
+    })
+
+
 def switch_language(lang_code):
-    # Switch UI language and rebuild labels
+    """
+    Change LANG and update all widget texts in-place.
+    """
     global LANG
+    if LANG == lang_code:
+        return
     LANG = lang_code
-    for widget in MAIN_ROOT.winfo_children():
-        widget.destroy()
-    build_ui()
+    MAIN_ROOT.title(MENU_TEXT[LANG]['title'])
+    build_widgets()
 
 
 def build_ui():
-    # Build the main Tkinter UI with language buttons
-    global MAIN_ROOT
-    root = tk.Tk()
-    MAIN_ROOT = root
-    root.title('TDL Easy Launcher')
-    root.resizable(False, False)
+    """
+    Initialize the main window and widgets, then start mainloop.
+    """
+    global MAIN_ROOT, MAIN_FRAME
+    MAIN_ROOT = tk.Tk()
+    MAIN_ROOT.title(MENU_TEXT[LANG]['title'])
+    MAIN_ROOT.resizable(False, False)
 
-    frm = tk.Frame(root, padx=12, pady=12)
-    frm.pack()
+    MAIN_FRAME = tk.Frame(MAIN_ROOT, padx=12, pady=12)
+    MAIN_FRAME.pack()
 
-    # Language switch buttons
-    btn_en = tk.Button(frm, text=MENU_TEXT[LANG]['button_en'], width=4, command=lambda: switch_language('EN'))
-    btn_ru = tk.Button(frm, text=MENU_TEXT[LANG]['button_ru'], width=4, command=lambda: switch_language('RU'))
-    btn_en.grid(row=0, column=0, sticky='w')
-    btn_ru.grid(row=0, column=1, sticky='w')
+    build_widgets()
 
-    # Menu label
-    lbl = tk.Label(frm, text=MENU_TEXT[LANG]['menu'], font=('Segoe UI', 14, 'bold'))
-    lbl.grid(row=1, column=0, columnspan=2, pady=(8,12), sticky='w')
-
-    # Buttons for actions
-    btn_update = tk.Button(frm, text=MENU_TEXT[LANG]['install_update'], width=35, command=install_update_tdl)
-    btn_update.grid(row=2, column=0, columnspan=2, pady=4)
-
-    btn_login = tk.Button(frm, text=MENU_TEXT[LANG]['telegram_login'], width=35, command=login_telegram)
-    btn_login.grid(row=3, column=0, columnspan=2, pady=4)
-
-    btn_single = tk.Button(frm, text=MENU_TEXT[LANG]['download_single'], width=35, command=download_single_file)
-    btn_single.grid(row=4, column=0, columnspan=2, pady=4)
-
-    btn_range = tk.Button(frm, text=MENU_TEXT[LANG]['download_range'], width=35, command=download_range)
-    btn_range.grid(row=5, column=0, columnspan=2, pady=4)
-
-    btn_full = tk.Button(frm, text=MENU_TEXT[LANG]['download_full'], width=35, command=download_full_chat)
-    btn_full.grid(row=6, column=0, columnspan=2, pady=4)
-
-    btn_exit = tk.Button(frm, text=MENU_TEXT[LANG]['exit'], width=35, command=root.destroy)
-    btn_exit.grid(row=7, column=0, columnspan=2, pady=(12,4))
-
-    hint = tk.Label(frm, text=MENU_TEXT[LANG]['hint'], font=('Segoe UI', 8), fg='gray')
-    hint.grid(row=8, column=0, columnspan=2, pady=(8,0))
-
-    root.mainloop()
+    MAIN_ROOT.mainloop()
 
 
 if __name__ == '__main__':

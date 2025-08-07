@@ -65,7 +65,6 @@ def resource_path(rel):
         base = os.path.abspath(os.path.dirname(__file__))
     return os.path.join(base, rel)
 
-
 def get_launcher_dir():
     """
     Return directory where this script/executable resides.
@@ -75,7 +74,6 @@ def get_launcher_dir():
         return os.path.dirname(exe_path)
     else:
         return os.path.abspath(os.path.dirname(__file__))
-
 
 def get_powershell_version():
     """
@@ -90,7 +88,6 @@ def get_powershell_version():
         return int(output.strip())
     except Exception:
         return 0
-
 
 def sanitize_script(script_path):
     """
@@ -110,7 +107,6 @@ def sanitize_script(script_path):
     except Exception as e:
         messagebox.showerror('Error', str(e))
         return script_path
-
 
 def run_powershell_script(script_path, extra_command=None):
     """
@@ -136,7 +132,6 @@ def run_powershell_script(script_path, extra_command=None):
     except Exception as e:
         messagebox.showerror('Launch Error', str(e))
 
-
 def ensure_and_copy(src_rel_name):
     """
     Copy embedded resource script to launcher directory.
@@ -151,7 +146,6 @@ def ensure_and_copy(src_rel_name):
         return None
     return dest
 
-
 def write_state_json(path, obj):
     """
     Write JSON state file for PS scripts.
@@ -163,7 +157,6 @@ def write_state_json(path, obj):
         messagebox.showerror('Error', str(e))
         return False
     return True
-
 
 # ==============================================================================
 # Dialog classes
@@ -188,7 +181,6 @@ class StringInputDialog(simpledialog.Dialog):
 
     def apply(self):
         self.result = self.entry.get()
-
 
 class IntegerInputDialog(simpledialog.Dialog):
     def __init__(self, parent, title, prompt, initialvalue=0, minvalue=None, maxvalue=None):
@@ -225,7 +217,6 @@ class IntegerInputDialog(simpledialog.Dialog):
         except Exception:
             self.result = None
 
-
 # ==============================================================================
 # TDL actions
 # ==============================================================================
@@ -254,7 +245,6 @@ function Read-Host {{
         return None
     return wrapper_path
 
-
 def install_update_tdl():
     """
     Handle INSTALL/UPDATE TDL action.
@@ -263,7 +253,6 @@ def install_update_tdl():
     if not updater:
         return
     run_powershell_script(updater)
-
 
 def login_telegram():
     """
@@ -290,7 +279,6 @@ def login_telegram():
     except Exception as e:
         messagebox.showerror('Launch Error', str(e))
 
-
 def download_single_file():
     """
     Handle DOWNLOAD SINGLE FILE action.
@@ -306,8 +294,9 @@ def download_single_file():
     if not (url.startswith('http://') or url.startswith('https://')):
         messagebox.showwarning('Invalid URL', 'Expecting full URL starting with http:// or https://')
         return
-    if not re.match(r"^https?://t\\.me/(?:(?:c/\\d+/(?:\\d+))(?:/\\d+)?|(?:[A-Za-z0-9_]{5,32}/\\d+))$", url):
-        messagebox.showwarning('Invalid URL', 'Expected link like https://t.me/username/123 or https://t.me/c/12345678/123')
+    # use original pattern for single message or topic message URL
+    if not re.match(r"^https?://t\.me/(?:(?:c/\d+/(?:\d+))(?:/\d+)?|(?:[A-Za-z0-9_]{5,32}/\d+))$", url):
+        messagebox.showwarning('Invalid URL', 'Expected link like https://t.me/username/123 or https://t.me/c/12345678/123 or https://t.me/c/12345678/456/123')
         return
     launcher_dir = get_launcher_dir()
     original = ensure_and_copy('tdl-easy-single.ps1')
@@ -326,7 +315,6 @@ def download_single_file():
         messagebox.showerror('Error', str(e))
         return
     run_powershell_script(wrapper_path)
-
 
 def download_range():
     """
@@ -357,11 +345,12 @@ def download_range():
         base_link = base_link.strip()
         if not base_link.endswith('/'):
             base_link += '/'
-        if (re.match(r"^https?://t\\.me/c/\\d+/$", base_link)
-                or re.match(r"^https?://t\\.me/c/\\d+/\\d+/$", base_link)
-                or re.match(r"^https?://t\\.me/[A-Za-z0-9_]{5,32}/$", base_link)):
+        # use original patterns for base links
+        if (re.match(r"^https?://t\.me/c/\d+/$", base_link)
+                or re.match(r"^https?://t\.me/c/\d+/\d+/$", base_link)
+                or re.match(r"^https?://t\.me/[A-Za-z0-9_]{5,32}/$", base_link)):
             break
-        messagebox.showwarning('Invalid Format', 'Expected https://t.me/c/12345678/ or https://t.me/username/ with trailing slash.')
+        messagebox.showwarning('Invalid Format', 'Expected https://t.me/c/12345678/ or https://t.me/c/12345678/123/ or https://t.me/username/ with trailing slash.')
 
     while True:
         start_id_dlg = IntegerInputDialog(MAIN_ROOT, 'Start Index', 'Enter startId (positive integer, default 1):', initialvalue=1, minvalue=1)
@@ -418,7 +407,6 @@ def download_range():
         return
     run_powershell_script(wrapper)
 
-
 def download_full_chat():
     """
     Handle DOWNLOAD FULL CHAT action.
@@ -431,7 +419,7 @@ def download_full_chat():
         messagebox.showerror('Error', f'TDL path not found: {tdl_path}')
         return
 
-    dlg2 = StringInputDialog(MAIN_ROOT, 'Media directory', 'Directory to save into:', initialvalue=launcher_dir, width=80)
+    dlg2 = StringInputDialog(MAIN_ROOT, 'Media directory', 'Directory to save into:', initialvalue=launcher_dir,	width=80)
     media_dir = dlg2.result if dlg2.result and dlg2.result.strip() else launcher_dir
     if not os.path.exists(media_dir):
         messagebox.showerror('Error', f'Media directory not found: {media_dir}')
@@ -446,11 +434,12 @@ def download_full_chat():
         if not msg_url:
             return
         msg_url = msg_url.strip()
-        if (re.match(r"^https?://t\\.me/c/\\d+/\\d+$", msg_url)
-                or re.match(r"^https?://t\\.me/c/\\d+/\\d+/\\d+$", msg_url)
-                or re.match(r"^https?://t\\.me/[A-Za-z0-9_]{5,32}/\\d+$", msg_url)):
+        # use original patterns for full chat URLs
+        if (re.match(r"^https?://t\.me/c/\d+/\d+$", msg_url)
+                or re.match(r"^https?://t\.me/c/\d+/\d+/\d+$", msg_url)
+                or re.match(r"^https?://t\.me/[A-Za-z0-9_]{5,32}/\d+$", msg_url)):
             break
-        messagebox.showwarning('Invalid Format', 'Expected https://t.me/username/123 or https://t.me/c/.../123')
+        messagebox.showwarning('Invalid Format', 'Expected https://t.me/username/123 or https://t.me/c/12345678/123 or topic message like https://t.me/c/2267448302/166/4771')
 
     while True:
         dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, 'Task Limit', 'Max concurrent download tasks (1-10) [default 2]:', initialvalue=2, minvalue=1, maxvalue=10)
@@ -485,7 +474,6 @@ def download_full_chat():
         return
     run_powershell_script(wrapper)
 
-
 # ==============================================================================
 # UI construction and language switching
 # ==============================================================================
@@ -496,7 +484,7 @@ def build_widgets():
     """
     global WIDGETS
 
-    # clear any existing children
+    # clear existing children
     for w in MAIN_FRAME.winfo_children():
         w.destroy()
 
@@ -554,7 +542,6 @@ def build_widgets():
         'hint': hint,
     })
 
-
 def switch_language(lang_code):
     """
     Change LANG and update all widget texts in-place.
@@ -565,7 +552,6 @@ def switch_language(lang_code):
     LANG = lang_code
     MAIN_ROOT.title(MENU_TEXT[LANG]['title'])
     build_widgets()
-
 
 def build_ui():
     """
@@ -582,7 +568,6 @@ def build_ui():
     build_widgets()
 
     MAIN_ROOT.mainloop()
-
 
 if __name__ == '__main__':
     build_ui()

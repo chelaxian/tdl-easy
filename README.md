@@ -20,6 +20,11 @@ or if you want use powershell in console:
 5. run `.\tdl-easy-range.ps1` or `.\tdl-easy-full.ps1` or `.\tdl-easy-single.ps1` and follow interactive wizard to set up and start downloading.
 
 ---
+## Source code usage:
+
+<details>
+   <summary>spoiler</summary>
+   
 ## Compile GUI
 
 If you want to compile GUI version from source copy file `GUI\tdl_gui.py` to other `ps1` scripts and use command:
@@ -212,3 +217,5 @@ Latest version: v0.19.1
 Version is up-to-date and tdl.exe exists.
 Update check completed.
 ```
+
+</details>

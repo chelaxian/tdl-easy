@@ -1,7 +1,31 @@
 # Interrupt handling: clean exit on Ctrl+C
 trap [System.OperationCanceledException] {
-    Write-Host "`n⚠️ Interrupted by user." -ForegroundColor Yellow
+    Write-Host "`n[!] Interrupted by user." -ForegroundColor Yellow
     exit
+}
+
+# PowerShell version detection and emoji compatibility
+function Get-PSVersion {
+    try {
+        return $PSVersionTable.PSVersion.Major
+    } catch {
+        return 5  # Default to 5 if detection fails
+    }
+}
+
+function Write-Emoji {
+    param(
+        [string]$Text,
+        [string]$Color = "White"
+    )
+    $psVersion = Get-PSVersion
+    if ($psVersion -ge 7) {
+        Write-Host $Text -ForegroundColor $Color
+    } else {
+        # Replace emojis with ASCII equivalents for PS 5.x
+        $asciiText = $Text -replace "⚠️", "[!]" -replace "ℹ️", "[i]" -replace "🟡", "[*]" -replace "🟢", "[+]" -replace "🔴", "[x]" -replace "📜", "[f]" -replace "📂", "[d]" -replace "⏭️", "[s]" -replace "📋", "[c]" -replace "✅", "[ok]" -replace "🗑️", "[del]" -replace "🎉", "[done]"
+        Write-Host $asciiText -ForegroundColor $Color
+    }
 }
 
 # Set paths
@@ -12,9 +36,10 @@ $logFile = Join-Path -Path $tdl_path -ChildPath "download_log.txt"
 # Change to TDL path
 Set-Location -Path $tdl_path
 
-# Check for tdl.exe
-if (-not (Test-Path ".\tdl.exe")) {
-    Write-Host "🔴 Error: tdl.exe not found in $tdl_path" -ForegroundColor Red
+# Check for tdl.exe in the specified path
+$tdlExePath = Join-Path $tdl_path "tdl.exe"
+if (-not (Test-Path -LiteralPath $tdlExePath)) {
+    Write-Emoji "[x] Error: tdl.exe not found in $tdl_path" "Red"
     exit
 }
 
@@ -28,7 +53,7 @@ do {
     $telegramUrl = Read-Host
 
     if ([string]::IsNullOrWhiteSpace($telegramUrl)) {
-        Write-Host "🔴 Error: URL cannot be empty." -ForegroundColor Red
+        Write-Emoji "[x] Error: URL cannot be empty." "Red"
         continue
     }
 
@@ -40,7 +65,7 @@ do {
     # - internal channel message: https://t.me/c/12345678/123
     # - forum topic message: https://t.me/c/12345678/<topic_id>/<message_id>
     if ($telegramUrl -notmatch '^https?://t\.me/(?:c/\d+/\d+(?:/\d+)?|[A-Za-z0-9_]+/\d+)$') {
-        Write-Host "🔴 Error: URL must be one of forms: https://t.me/c/12345678/123 , https://t.me/abc/123 or topic link like https://t.me/c/2267448302/166/4857" -ForegroundColor Red
+        Write-Emoji "[x] Error: URL must be one of forms: https://t.me/c/12345678/123 , https://t.me/abc/123 or topic link like https://t.me/c/2267448302/166/4857" "Red"
         continue
     }
 
@@ -50,22 +75,22 @@ Write-Host "╚═════════════════════�
 
 # Build and run command
 $command = ".\tdl.exe download --desc --dir `"$mediaDir`" --url `"$telegramUrl`""
-Write-Host "🟡 Starting download for URL: $telegramUrl" -ForegroundColor Yellow
-Write-Host "📋 Command: $command" -ForegroundColor Gray
+Write-Emoji "[*] Starting download for URL: $telegramUrl" "Yellow"
+Write-Emoji "[c] Command: $command" "Gray"
 "[$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))] Starting: $telegramUrl" | Out-File -FilePath $logFile -Append
 $command | Out-File -FilePath $logFile -Append
 
 try {
     $output = Invoke-Expression $command 2>&1 | ForEach-Object { Write-Host $_ -ForegroundColor White; $_ }
     $output | Out-File -FilePath $logFile -Append
-    Write-Host "🟢 Successfully downloaded: $telegramUrl" -ForegroundColor Green
+    Write-Emoji "[+] Successfully downloaded: $telegramUrl" "Green"
 } catch {
-    Write-Host "🔴 Error downloading: $telegramUrl - $_" -ForegroundColor Red
+    Write-Emoji "[x] Error downloading: $telegramUrl - $_" "Red"
     $_ | Out-File -FilePath $logFile -Append
 }
 
 # Open the download folder in Windows Explorer
-Write-Host "📂 Opening download folder: $mediaDir" -ForegroundColor Cyan
+Write-Emoji "[d] Opening download folder: $mediaDir" "Cyan"
 Start-Process explorer.exe -ArgumentList $mediaDir
 
-Write-Host "🎉 Completed!" -ForegroundColor Cyan
+Write-Emoji "[done] Completed!" "Cyan"

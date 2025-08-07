@@ -1,13 +1,37 @@
 # Interrupt handling: clean exit on Ctrl+C
 trap [System.OperationCanceledException] {
-    Write-Host "`n⚠️ Interrupted by user." -ForegroundColor Yellow
+    Write-Host "`n[!] Interrupted by user." -ForegroundColor Yellow
     exit
+}
+
+# PowerShell version detection and emoji compatibility
+function Get-PSVersion {
+    try {
+        return $PSVersionTable.PSVersion.Major
+    } catch {
+        return 5  # Default to 5 if detection fails
+    }
+}
+
+function Write-Emoji {
+    param(
+        [string]$Text,
+        [string]$Color = "White"
+    )
+    $psVersion = Get-PSVersion
+    if ($psVersion -ge 7) {
+        Write-Host $Text -ForegroundColor $Color
+    } else {
+        # Replace emojis with ASCII equivalents for PS 5.x
+        $asciiText = $Text -replace "⚠️", "[!]" -replace "ℹ️", "[i]" -replace "🟡", "[*]" -replace "🟢", "[+]" -replace "🔴", "[x]" -replace "📜", "[f]" -replace "📂", "[d]" -replace "⏭️", "[s]" -replace "📋", "[c]" -replace "✅", "[ok]" -replace "🗑️", "[del]" -replace "🎉", "[done]"
+        Write-Host $asciiText -ForegroundColor $Color
+    }
 }
 
 #################################################################################################################################################
 # Configuration storage in JSON file
 #################################################################################################################################################
-$stateFile = Join-Path -Path (Split-Path -Parent $MyInvocation.MyCommand.Path) -ChildPath "tdl_easy_runner.json"
+$stateFile = Join-Path -Path (Split-Path -Parent $MyInvocation.MyCommand.Path) -ChildPath "tdl_easy.json"
 
 function Load-Config {
     # Load configuration from JSON file, return PSCustomObject or $null
@@ -16,7 +40,7 @@ function Load-Config {
             $json = Get-Content $stateFile -Raw
             return ConvertFrom-Json $json
         } catch {
-            Write-Host "⚠️ Failed to parse existing config, ignoring and starting fresh." -ForegroundColor Yellow
+            Write-Emoji "[!] Failed to parse existing config, ignoring and starting fresh." "Yellow"
             return $null
         }
     }
@@ -91,7 +115,7 @@ if ($haveAnySaved) {
             $startId   = ""; $endId       = ""; $downloadLimit = ""; $threads = ""; $maxRetries = 1
         }
         default {
-            Write-Host "ℹ️ Unrecognized response. Assuming use saved parameters." -ForegroundColor Yellow
+            Write-Emoji "[i] Unrecognized response. Assuming use saved parameters." "Yellow"
             $useSaved = $true
         }
     }
@@ -117,7 +141,7 @@ if (-not $useSaved) {
                 $tdl_path = $input.TrimEnd('\')
             }
             if (-not (Test-Path -LiteralPath $tdl_path)) {
-                Write-Host "🔴 Error: The specified TDL path does not exist. Please try again." -ForegroundColor Red
+                Write-Emoji "[x] Error: The specified TDL path does not exist. Please try again." "Red"
                 continue
             }
             break
@@ -138,7 +162,7 @@ if (-not $useSaved) {
                 $mediaDir = $input.TrimEnd('\')
             }
             if (-not (Test-Path -LiteralPath $mediaDir)) {
-                Write-Host "🔴 Error: The specified media directory does not exist. Please try again." -ForegroundColor Red
+                Write-Emoji "[x] Error: The specified media directory does not exist. Please try again." "Red"
                 continue
             }
             break
@@ -154,7 +178,7 @@ if (-not $useSaved) {
             Write-Host "Copy-Paste Telegram channel/group/topic base URL (no message index in the end)"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
-                Write-Host "🔴 Error: URL cannot be empty." -ForegroundColor Red
+                Write-Emoji "[x] Error: URL cannot be empty." "Red"
                 continue
             }
             if (-not $input.EndsWith("/")) { $input = "$input/" }
@@ -162,12 +186,12 @@ if (-not $useSaved) {
             try {
                 $parsedUri = [uri]$input
             } catch {
-                Write-Host "🔴 Error: Invalid URL format." -ForegroundColor Red
+                Write-Emoji "[x] Error: Invalid URL format." "Red"
                 continue
             }
 
             if ($parsedUri.Scheme -notin @('http', 'https') -or $parsedUri.Host -ne 't.me') {
-                Write-Host "🔴 Error: URL must be https://t.me/..." -ForegroundColor Red
+                Write-Emoji "[x] Error: URL must be https://t.me/..." "Red"
                 continue
             }
 
@@ -186,7 +210,7 @@ if (-not $useSaved) {
             }
 
             if (-not $isValidBase) {
-                Write-Host "🔴 Error: URL должен быть https://t.me/c/12345678/ или https://t.me/username/ или topic base https://t.me/c/2267448302/166/." -ForegroundColor Red
+                Write-Emoji "[x] Error: URL должен быть https://t.me/c/12345678/ или https://t.me/username/ или topic base https://t.me/c/2267448302/166/." "Red"
                 continue
             }
 
@@ -210,35 +234,32 @@ if (-not $useSaved) {
             if ([int]::TryParse($input, [ref]$startId) -and $startId -gt 0) {
                 break
             }
-            Write-Host "🔴 Error: Please enter a valid positive integer for the starting index." -ForegroundColor Red
+            Write-Emoji "[x] Error: Please enter a valid positive integer for the starting index." "Red"
         } while ($true)
 
         do {
-            $defaultEnd = 100
-            if (($startId -is [int]) -and $startId -gt $defaultEnd) { $defaultEnd = $startId }
-            Write-Host "Enter the ending message index (must be >= $startId) [default: $defaultEnd]"
+            Write-Host "Enter the ending message index (must be >= $startId) [default: $($startId+99)]"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
-                $endId = $defaultEnd
-            } elseif ([int]::TryParse($input, [ref]$endId) -and $endId -ge $startId) {
-                # ok
-            } else {
-                Write-Host "🔴 Error: Please enter a valid integer >= $startId for the ending index." -ForegroundColor Red
-                continue
+                $endId = $startId + 99
+                break
             }
-            if ($endId -lt $startId) {
-                Write-Host "🔴 Error: ending index must be >= starting index." -ForegroundColor Red
-                continue
+            if ([int]::TryParse($input, [ref]$endId) -and $endId -ge $startId) {
+                break
             }
-            break
+            Write-Emoji "[x] Error: Please enter a valid integer >= $startId for the ending index." "Red"
         } while ($true)
-        Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
+
+        if ($endId -lt $startId) {
+            Write-Emoji "[x] Error: ending index must be >= starting index." "Red"
+            exit
+        }
 
         # Concurrency settings
         do {
             Write-Host "";
             Write-Host "╔════════════════ CONCURRENCY CONFIGURATION ═════════════════════════════════╗" -ForegroundColor DarkGray
-            Write-Host "║ Defaults: downloadLimit=2, threads=4, maxRetries=1" -ForegroundColor Gray
+            Write-Host "║ Defaults: downloadLimit=2, threads=4" -ForegroundColor Gray
             Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
             Write-Host "Enter max concurrent download tasks (-l, 1 to 10) [default: 2]"
             $input = Read-Host
@@ -249,7 +270,7 @@ if (-not $useSaved) {
             if ([int]::TryParse($input, [ref]$downloadLimit) -and $downloadLimit -ge 1 -and $downloadLimit -le 10) {
                 break
             }
-            Write-Host "🔴 Error: Please enter a valid integer between 1 and 10 for the download limit." -ForegroundColor Red
+            Write-Emoji "[x] Error: Please enter a valid integer between 1 and 10 for the download limit." "Red"
         } while ($true)
 
         do {
@@ -262,7 +283,7 @@ if (-not $useSaved) {
             if ([int]::TryParse($input, [ref]$threads) -and $threads -ge 1 -and $threads -le 8) {
                 break
             }
-            Write-Host "🔴 Error: Please enter a valid integer between 1 and 8 for the threads." -ForegroundColor Red
+            Write-Emoji "[x] Error: Please enter a valid integer between 1 and 8 for the threads." "Red"
         } while ($true)
 
         do {
@@ -275,7 +296,7 @@ if (-not $useSaved) {
             if ([int]::TryParse($input, [ref]$maxRetries) -and $maxRetries -ge 1 -and $maxRetries -le 5) {
                 break
             }
-            Write-Host "🔴 Error: Please enter a valid integer between 1 and 5 for max retries." -ForegroundColor Red
+            Write-Emoji "[x] Error: Please enter a valid integer between 1 and 5 for max retries." "Red"
         } while ($true)
         Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
 
@@ -292,7 +313,7 @@ if (-not $useSaved) {
         }
         Save-Config $toSave
     } catch {
-        Write-Host "`n⚠️ Input interrupted, configuration remains cleared." -ForegroundColor Yellow
+        Write-Emoji "`n[!] Input interrupted, configuration remains cleared." "Yellow"
         exit
     }
 }
@@ -302,77 +323,69 @@ $logFile = "${tdl_path}\download_log.txt"
 $processedFile = "${mediaDir}\processed.txt"
 $errorFile = "${mediaDir}\error_index.txt"
 
-# Extract channel identifier (internal numeric, topic base, or public username) from base URL
-$channelIdentifier = $null
-if ($telegramUrl -match '^https?://t\.me/c/(\d+)/(\d+)/$') {
-    # topic base
-    $channelIdentifier = "$($Matches[1])/$($Matches[2])"
-} elseif ($telegramUrl -match '^https?://t\.me/c/(\d+)/$') {
-    $channelIdentifier = $Matches[1]
+# Extract channel/group identifier from base URL
+$channelId = $null
+if ($telegramUrl -match '^https?://t\.me/c/(\d+)(?:/\d+)?/$') {
+    $channelId = $Matches[1]
 } elseif ($telegramUrl -match '^https?://t\.me/([A-Za-z0-9_]{5,32})/$') {
-    $channelIdentifier = $Matches[1].ToLowerInvariant()
+    $channelId = $Matches[1]
 }
-
-if ([string]::IsNullOrWhiteSpace($channelIdentifier)) {
-    Write-Host "🔴 Error: Failed to extract channel/group identifier from URL: $telegramUrl" -ForegroundColor Red
+if ([string]::IsNullOrWhiteSpace($channelId)) {
+    Write-Emoji "[x] Error: Failed to extract channel/group identifier from URL: $telegramUrl" "Red"
     while ($true) {
-        $resp = Read-Host "Enter the base Telegram link again (https://t.me/c/12345678/ or https://t.me/c/2267448302/166/ or https://t.me/username/) or 'quit' to exit"
+        $resp = Read-Host "Enter Telegram base URL again in form https://t.me/c/12345678/ or https://t.me/username/ or topic base https://t.me/c/2267448302/166/ or type 'quit' to exit"
         if ($resp -eq 'quit') { exit }
-        if (-not $resp.EndsWith("/")) { $resp = "$resp/" }
-        if ($resp -match '^https?://t\.me/c/(\d+)/(\d+)/$') {
+        if ($resp -match '^https?://t\.me/c/(\d+)(?:/\d+)?/$') {
             $telegramUrl = $resp
-            $channelIdentifier = "$($Matches[1])/$($Matches[2])"
-            break
-        } elseif ($resp -match '^https?://t\.me/c/(\d+)/$') {
-            $telegramUrl = $resp
-            $channelIdentifier = $Matches[1]
+            $channelId = $Matches[1]
             break
         } elseif ($resp -match '^https?://t\.me/([A-Za-z0-9_]{5,32})/$') {
             $telegramUrl = $resp
-            $channelIdentifier = $Matches[1].ToLowerInvariant()
+            $channelId = $Matches[1]
             break
         } else {
-            Write-Host "🔴 Invalid format, should be https://t.me/c/12345678/ or https://t.me/c/2267448302/166/ or https://t.me/username/." -ForegroundColor Red
+            Write-Emoji "[x] Invalid format, should be https://t.me/c/12345678/ or https://t.me/c/2267448302/166/ or https://t.me/username/." "Red"
         }
     }
+}
+
+# Check for tdl.exe in the specified path
+$tdlExePath = Join-Path $tdl_path "tdl.exe"
+if (-not (Test-Path -LiteralPath $tdlExePath)) {
+    Write-Emoji "[x] Error: tdl.exe not found in $tdl_path" "Red"
+    exit
 }
 
 # Change to TDL path
 Set-Location -Path $tdl_path
 
-# Check for tdl.exe
-if (-not (Test-Path ".\tdl.exe")) {
-    Write-Host "🔴 Error: tdl.exe not found in $tdl_path" -ForegroundColor Red
-    exit
-}
-
 # PowerShell version info
-$psVersion = $PSVersionTable.PSVersion
-Write-Host "ℹ️ Using PowerShell version: $psVersion" -ForegroundColor Cyan
+$psVersion = Get-PSVersion
+Write-Emoji "[i] Using PowerShell version: $psVersion" "Cyan"
 
 # Load already processed and error indexes
 $processedIds = @()
 if (Test-Path $processedFile) {
     $processedIds = Get-Content $processedFile | ForEach-Object { [int]$_ }
-    Write-Host "📜 Loaded $($processedIds.Count) processed indexes from $processedFile" -ForegroundColor Cyan
+    Write-Emoji "[f] Loaded $($processedIds.Count) processed indexes from $processedFile" "Cyan"
 }
 
 $errorIds = @()
 if (Test-Path $errorFile) {
     $errorIds = Get-Content $errorFile | ForEach-Object { [int]$_ }
-    Write-Host "📜 Loaded $($errorIds.Count) error indexes from $errorFile" -ForegroundColor Cyan
+    Write-Emoji "[f] Loaded $($errorIds.Count) error indexes from $errorFile" "Cyan"
 }
 
-# Extract fully downloaded indexes from mediaDir — only check message index regardless of channel prefix
+# Extract fully downloaded indexes from mediaDir
 $downloadedIds = @()
 if (Test-Path $mediaDir) {
     $files = Get-ChildItem -Path $mediaDir -File
     foreach ($file in $files) {
-        if ($file.Name -match '^[^_]+_(\d+)_' -and $file.Length -gt 0 -and $file.Extension -ne ".tmp") {
+        if ($file.Name -match "^${channelId}_(\d+)_" -and $file.Length -gt 0 -and $file.Extension -ne ".tmp") {
             $downloadedIds += [int]$Matches[1]
         }
     }
-    Write-Host "📂 Found $($downloadedIds.Count) fully downloaded indexes from files in $mediaDir" -ForegroundColor Cyan
+    Write-Emoji "[d] Found $($downloadedIds.Count) fully downloaded indexes from files in $mediaDir" "Cyan"
 }
 
 # Combine processed, error, and downloaded for skipping
@@ -388,150 +401,111 @@ function Save-ErrorId($id) {
     $id | Out-File -FilePath $errorFile -Append
 }
 
-# track if any successful download occurred
-$anySuccess = $false
-
-# Main download loop
-$currentId = $startId
+# Main download loop with retries
 $retryCount = 0
-while ($currentId -le $endId) {
-    # Skip already processed, errored, or downloaded
-    while ($currentId -le $endId -and $allProcessedIds -contains $currentId) {
-        Write-Host "⏭️ Skipped index: $currentId (processed, errored, or fully downloaded)" -ForegroundColor Cyan
-        $currentId++
-    }
-    if ($currentId -gt $endId) { break }
-
-    # Form batch
-    $batch = @($currentId)
-    $nextId = $currentId + 1
-    $batchSize = [math]::Min($downloadLimit, $endId - $currentId + 1)
-    for ($i = 1; $i -lt $batchSize; $i++) {
-        if ($nextId -le $endId -and -not ($allProcessedIds -contains $nextId)) {
-            $batch += $nextId
-        } else { break }
-        $nextId++
-    }
-
-    Write-Host "📋 Debug: Batch contains $($batch.Count) URLs" -ForegroundColor Gray
-
-    # Build and run command
-    $urls = $batch | ForEach-Object { "`"$telegramUrl$_`"" }
-    $command = ".\tdl.exe download --desc --dir `"$mediaDir`" --url $($urls -join ' --url ') -l $downloadLimit -t $threads"
-    $pair = $batch -join ","
-
-    Write-Host "🟡 Starting download for indexes: $pair" -ForegroundColor Yellow
-    Write-Host "📋 Command: $command" -ForegroundColor Gray
-    "[$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))] Starting: $pair" | Out-File -FilePath $logFile -Append
-    $command | Out-File -FilePath $logFile -Append
-
-    try {
-        $output = Invoke-Expression $command 2>&1 | ForEach-Object { Write-Host $_ -ForegroundColor White; $_ }
-        # Timeout monitoring
-        $processRunning = $true
-        $startTime = Get-Date
-        while ($processRunning -and ((Get-Date) - $startTime).TotalSeconds -lt $timeoutSeconds) {
-            $process = Get-Process | Where-Object { $_.Path -eq "$tdl_path\tdl.exe" -and -not $_.HasExited }
-            if (-not $process) { $processRunning = $false }
-            Start-Sleep -Seconds 1
+while ($retryCount -lt $maxRetries) {
+    Write-Emoji "[*] Starting download attempt $($retryCount + 1) of $maxRetries" "Yellow"
+    
+    # Process indexes in batches
+    for ($currentId = $startId; $currentId -le $endId; $currentId++) {
+        if ($allProcessedIds -contains $currentId) {
+            Write-Emoji "[s] Skipped index: $currentId (processed, errored, or fully downloaded)" "Cyan"
+            continue
         }
-        if ($processRunning) {
-            $process | Stop-Process -Force
-            Write-Host "🔴 Timeout reached for: $pair after $timeoutSeconds seconds" -ForegroundColor Red
-            throw "Timeout"
-        }
-        $output | Out-File -FilePath $logFile -Append
 
-        # Check each index individually for success or failure (match only by index part)
-        $successfulIds = @()
-        $failedIds = @()
-        foreach ($id in $batch) {
-            $downloadedFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^[^_]+_${id}_.*" -and $_.Length -gt 0 -and $_.Extension -ne ".tmp" }
+        # Build URL for current index
+        $currentUrl = $telegramUrl + $currentId.ToString()
+        
+        # Build and run command
+        $command = ".\tdl.exe download --desc --dir `"$mediaDir`" --url `"$currentUrl`" -l $downloadLimit -t $threads"
+        Write-Emoji "[c] Debug: Processing index $currentId" "Gray"
+        Write-Emoji "[c] Command: $command" "Gray"
+        "[$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))] Processing: $currentUrl" | Out-File -FilePath $logFile -Append
+        $command | Out-File -FilePath $logFile -Append
+
+        try {
+            $output = Invoke-Expression $command 2>&1 | ForEach-Object { Write-Host $_ -ForegroundColor White; $_ }
+            
+            # Timeout monitoring
+            $processRunning = $true
+            $startTime = Get-Date
+            while ($processRunning -and ((Get-Date) - $startTime).TotalSeconds -lt $timeoutSeconds) {
+                $process = Get-Process | Where-Object { $_.Path -eq "$tdl_path\tdl.exe" -and -not $_.HasExited }
+                if (-not $process) { $processRunning = $false }
+                Start-Sleep -Seconds 1
+            }
+            if ($processRunning) {
+                $process | Stop-Process -Force
+                Write-Emoji "[x] Timeout reached for: $currentId after $timeoutSeconds seconds" "Red"
+                throw "Timeout"
+            }
+            
+            $output | Out-File -FilePath $logFile -Append
+
+            # Check for downloaded file
+            $downloadedFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${currentId}_" -and $_.Length -gt 0 -and $_.Extension -ne ".tmp" } | Select-Object -First 1
             if ($downloadedFile) {
-                $successfulIds += $id
-                Write-Host "✅ Downloaded $($downloadedFile.Name) for index $id" -ForegroundColor Green
-                Save-ProcessedId $id
+                Write-Emoji "[ok] Downloaded $($downloadedFile.Name) for index $currentId" "Green"
+                Save-ProcessedId $currentId
+                $allProcessedIds += $currentId
             } else {
-                $failedIds += $id
-                Write-Host "🔴 Failed to download index $id (may be deleted or empty)" -ForegroundColor Red
-                Save-ErrorId $id
+                Write-Emoji "[x] Failed to download index $currentId (may be deleted or empty)" "Red"
+                Save-ErrorId $currentId
+                $allProcessedIds += $currentId
             }
+        } catch {
+            Write-Emoji "[x] Error executing command for: $currentId - $_" "Red"
+            $_ | Out-File -FilePath $logFile -Append
+            Save-ErrorId $currentId
+            $allProcessedIds += $currentId
         }
+    }
 
-        # Clean up any incomplete (zero-byte) files
-        foreach ($id in $batch) {
-            $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^[^_]+_${id}_.*" -and $_.Length -eq 0 }
-            if ($incompleteFile) {
-                Remove-Item -Path $incompleteFile.FullName -Force
-                Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red
-            }
+    # Check if all indexes were processed
+    $remainingIds = @()
+    for ($i = $startId; $i -le $endId; $i++) {
+        if (-not ($allProcessedIds -contains $i)) {
+            $remainingIds += $i
         }
+    }
 
-        # Summarize the batch result
-        if ($successfulIds.Count -gt 0 -and $failedIds.Count -eq 0) {
-            Write-Host "🟢 Successfully downloaded indexes: $($successfulIds -join ',')" -ForegroundColor Green
-            $anySuccess = $true
-        } elseif ($successfulIds.Count -gt 0 -and $failedIds.Count -gt 0) {
-            Write-Host "🟡 Partial success for batch: $($successfulIds -join ',') downloaded; $($failedIds -join ',') failed" -ForegroundColor Yellow
-            $anySuccess = $true
-        } else {
-            Write-Host "🔴 All indexes failed: $($failedIds -join ',')" -ForegroundColor Red
-            $retryCount++
-            if ($retryCount -ge $maxRetries) {
-                Write-Host "🔴 Exceeded max retries ($maxRetries) for: $pair" -ForegroundColor Red
-                $currentId = $batch[-1] + 1
-                $retryCount = 0
-                continue
-            } else {
-                Write-Host "🔶 Retrying batch: $pair" -ForegroundColor Yellow
-                continue
-            }
-        }
-        $retryCount = 0
-        $currentId = $batch[-1] + 1
-    } catch {
-        Write-Host "🔴 Error executing command for: $pair - $_" -ForegroundColor Red
-        foreach ($id in $batch) {
-            $incompleteFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^[^_]+_${id}_.*" -and $_.Length -eq 0 }
-            if ($incompleteFile) {
-                Remove-Item -Path $incompleteFile.FullName -Force
-                Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red
-            }
-            Write-Host "🔴 Failed to download index $id (command error)" -ForegroundColor Red
-            Save-ErrorId $id
-        }
-        $_ | Out-File -FilePath $logFile -Append
+    if ($remainingIds.Count -eq 0) {
+        Write-Emoji "[+] All indexes processed successfully!" "Green"
+        break
+    } else {
+        Write-Emoji "[*] Remaining indexes: $($remainingIds -join ',')" "Yellow"
         $retryCount++
         if ($retryCount -ge $maxRetries) {
-            Write-Host "🔴 Exceeded max retries ($maxRetries) for: $pair" -ForegroundColor Red
-            $currentId = $batch[-1] + 1
-            $retryCount = 0
-        } else {
-            Write-Host "🔶 Retrying batch: $pair" -ForegroundColor Yellow
+            Write-Emoji "[x] Exceeded max retries ($maxRetries)" "Red"
+            break
         }
+        Write-Emoji "[*] Retrying download..." "Yellow"
     }
 }
 
-# Cleanup processed and error files after all
-if ($currentId -gt $endId) {
-    if (Test-Path $processedFile) {
-        Remove-Item -Path $processedFile -Force
-        Write-Host "🗑️ File $processedFile deleted after completion." -ForegroundColor Cyan
-    }
-    if (Test-Path $errorFile) {
-        Remove-Item -Path $errorFile -Force
-        Write-Host "🗑️ File $errorFile deleted after completion." -ForegroundColor Cyan
-    }
-
-    # Auto-open folder if any downloads succeeded
-    if ($anySuccess) {
-        Write-Host "📂 Opening download folder: $mediaDir" -ForegroundColor Cyan
-        try {
-            Start-Process explorer.exe -ArgumentList $mediaDir
-        } catch {
-            Write-Host "⚠️ Не удалось открыть папку: $_" -ForegroundColor Yellow
-        }
-    }
+# Clean up incomplete files
+$incompleteFiles = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_\d+_.*" -and $_.Length -eq 0 }
+foreach ($incompleteFile in $incompleteFiles) {
+    Remove-Item -Path $incompleteFile.FullName -Force
+    Write-Emoji "[x] Removed incomplete file $($incompleteFile.Name)" "Red"
 }
 
-Write-Host "🎉 Completed! All indexes processed." -ForegroundColor Cyan
+# Cleanup processed and error files after completion
+if (Test-Path $processedFile) {
+    Remove-Item -Path $processedFile -Force
+    Write-Emoji "[del] File $processedFile deleted after completion." "Cyan"
+}
+if (Test-Path $errorFile) {
+    Remove-Item -Path $errorFile -Force
+    Write-Emoji "[del] File $errorFile deleted after completion." "Cyan"
+}
+
+# Auto-open folder
+Write-Emoji "[d] Opening download folder: $mediaDir" "Cyan"
+try {
+    Start-Process explorer.exe -ArgumentList $mediaDir
+} catch {
+    Write-Emoji "[!] Не удалось открыть папку: $_" "Yellow"
+}
+
+Write-Emoji "[done] Completed! All indexes processed." "Cyan"

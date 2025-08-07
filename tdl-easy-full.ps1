@@ -1,13 +1,37 @@
 # Interrupt handling: clean exit on Ctrl+C
 trap [System.OperationCanceledException] {
-    Write-Host "`n⚠️ Interrupted by user." -ForegroundColor Yellow
+    Write-Host "`n[!] Interrupted by user." -ForegroundColor Yellow
     exit
+}
+
+# PowerShell version detection and emoji compatibility
+function Get-PSVersion {
+    try {
+        return $PSVersionTable.PSVersion.Major
+    } catch {
+        return 5  # Default to 5 if detection fails
+    }
+}
+
+function Write-Emoji {
+    param(
+        [string]$Text,
+        [string]$Color = "White"
+    )
+    $psVersion = Get-PSVersion
+    if ($psVersion -ge 7) {
+        Write-Host $Text -ForegroundColor $Color
+    } else {
+        # Replace emojis with ASCII equivalents for PS 5.x
+        $asciiText = $Text -replace "⚠️", "[!]" -replace "ℹ️", "[i]" -replace "🟡", "[*]" -replace "🟢", "[+]" -replace "🔴", "[x]" -replace "📜", "[f]" -replace "📂", "[d]" -replace "⏭️", "[s]" -replace "📋", "[c]" -replace "✅", "[ok]" -replace "🗑️", "[del]" -replace "🎉", "[done]"
+        Write-Host $asciiText -ForegroundColor $Color
+    }
 }
 
 #################################################################################################################################################
 # Configuration storage in JSON file
 #################################################################################################################################################
-$stateFile = Join-Path -Path (Split-Path -Parent $MyInvocation.MyCommand.Path) -ChildPath "tdl_easy_runner.json"
+$stateFile = Join-Path -Path (Split-Path -Parent $MyInvocation.MyCommand.Path) -ChildPath "tdl_easy.json"
 
 function Load-Config {
     # Load configuration from JSON file, return PSCustomObject or $null
@@ -16,7 +40,7 @@ function Load-Config {
             $json = Get-Content $stateFile -Raw
             return ConvertFrom-Json $json
         } catch {
-            Write-Host "⚠️ Failed to parse existing config, ignoring and starting fresh." -ForegroundColor Yellow
+            Write-Emoji "[!] Failed to parse existing config, ignoring and starting fresh." "Yellow"
             return $null
         }
     }
@@ -85,7 +109,7 @@ if ($haveAnySaved) {
             $downloadLimit = ""; $threads = ""; $maxRetries = 1
         }
         default {
-            Write-Host "ℹ️ Unrecognized response. Assuming use saved parameters." -ForegroundColor Yellow
+            Write-Emoji "[i] Unrecognized response. Assuming use saved parameters." "Yellow"
             $useSaved = $true
         }
     }
@@ -111,7 +135,7 @@ if (-not $useSaved) {
                 $tdl_path = $input.TrimEnd('\')
             }
             if (-not (Test-Path -LiteralPath $tdl_path)) {
-                Write-Host "🔴 Error: The specified TDL path does not exist. Please try again." -ForegroundColor Red
+                Write-Emoji "[x] Error: The specified TDL path does not exist. Please try again." "Red"
                 continue
             }
             break
@@ -132,7 +156,7 @@ if (-not $useSaved) {
                 $mediaDir = $input.TrimEnd('\')
             }
             if (-not (Test-Path -LiteralPath $mediaDir)) {
-                Write-Host "🔴 Error: The specified media directory does not exist. Please try again." -ForegroundColor Red
+                Write-Emoji "[x] Error: The specified media directory does not exist. Please try again." "Red"
                 continue
             }
             break
@@ -148,13 +172,13 @@ if (-not $useSaved) {
             Write-Host "Copy-Paste any message URL from the group/channel/topic"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
-                Write-Host "🔴 Error: URL cannot be empty." -ForegroundColor Red
+                Write-Emoji "[x] Error: URL cannot be empty." "Red"
                 continue
             }
             $input = $input.TrimEnd('/')
 
             if ($input -notmatch '^https?://t\.me/(?:(?:c/\d+/\d+/\d+)|(?:c/\d+/\d+)|(?:[A-Za-z0-9_]{5,32}/\d+))$') {
-                Write-Host "🔴 Error: URL must be of form https://t.me/c/12345678/123 or https://t.me/username/123 or topic message like https://t.me/c/2267448302/166/4857." -ForegroundColor Red
+                Write-Emoji "[x] Error: URL must be of form https://t.me/c/12345678/123 or https://t.me/username/123 or topic message like https://t.me/c/2267448302/166/4857." "Red"
                 continue
             }
             $telegramMessageUrl = $input
@@ -177,7 +201,7 @@ if (-not $useSaved) {
             if ([int]::TryParse($input, [ref]$downloadLimit) -and $downloadLimit -ge 1 -and $downloadLimit -le 10) {
                 break
             }
-            Write-Host "🔴 Error: Please enter a valid integer between 1 and 10 for the download limit." -ForegroundColor Red
+            Write-Emoji "[x] Error: Please enter a valid integer between 1 and 10 for the download limit." "Red"
         } while ($true)
 
         do {
@@ -190,7 +214,7 @@ if (-not $useSaved) {
             if ([int]::TryParse($input, [ref]$threads) -and $threads -ge 1 -and $threads -le 8) {
                 break
             }
-            Write-Host "🔴 Error: Please enter a valid integer between 1 and 8 for the threads." -ForegroundColor Red
+            Write-Emoji "[x] Error: Please enter a valid integer between 1 and 8 for the threads." "Red"
         } while ($true)
 
         do {
@@ -203,7 +227,7 @@ if (-not $useSaved) {
             if ([int]::TryParse($input, [ref]$maxRetries) -and $maxRetries -ge 1 -and $maxRetries -le 5) {
                 break
             }
-            Write-Host "🔴 Error: Please enter a valid integer between 1 and 5 for max retries." -ForegroundColor Red
+            Write-Emoji "[x] Error: Please enter a valid integer between 1 and 5 for max retries." "Red"
         } while ($true)
         Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
 
@@ -218,7 +242,7 @@ if (-not $useSaved) {
         }
         Save-Config $toSave
     } catch {
-        Write-Host "`n⚠️ Input interrupted, configuration remains cleared." -ForegroundColor Yellow
+        Write-Emoji "`n[!] Input interrupted, configuration remains cleared." "Yellow"
         exit
     }
 }
@@ -237,7 +261,7 @@ if ($telegramMessageUrl -match '^https?://t\.me/c/(\d+)(?:/\d+){1,2}$') {
     $channelId = $Matches[1]
 }
 if ([string]::IsNullOrWhiteSpace($channelId)) {
-    Write-Host "🔴 Error: Failed to extract chat identifier from URL: $telegramMessageUrl" -ForegroundColor Red
+    Write-Emoji "[x] Error: Failed to extract chat identifier from URL: $telegramMessageUrl" "Red"
     while ($true) {
         $resp = Read-Host "Enter Telegram message URL again in form https://t.me/c/12345678/123 or https://t.me/username/123 or topic message https://t.me/c/2267448302/166/4857 or type 'quit' to exit"
         if ($resp -eq 'quit') { exit }
@@ -250,35 +274,36 @@ if ([string]::IsNullOrWhiteSpace($channelId)) {
             $channelId = $Matches[1]
             break
         } else {
-            Write-Host "🔴 Invalid format, must be https://t.me/c/12345678/123 or https://t.me/username/123 or topic message https://t.me/c/2267448302/166/4857 exactly." -ForegroundColor Red
+            Write-Emoji "[x] Invalid format, must be https://t.me/c/12345678/123 or https://t.me/username/123 or topic message https://t.me/c/2267448302/166/4857 exactly." "Red"
         }
     }
+}
+
+# Check for tdl.exe in the specified path
+$tdlExePath = Join-Path $tdl_path "tdl.exe"
+if (-not (Test-Path -LiteralPath $tdlExePath)) {
+    Write-Emoji "[x] Error: tdl.exe not found in $tdl_path" "Red"
+    exit
 }
 
 # Change to TDL path
 Set-Location -Path $tdl_path
 
-# Check for tdl.exe
-if (-not (Test-Path ".\tdl.exe")) {
-    Write-Host "🔴 Error: tdl.exe not found in $tdl_path" -ForegroundColor Red
-    exit
-}
-
 # PowerShell version info
-$psVersion = $PSVersionTable.PSVersion
-Write-Host "ℹ️ Using PowerShell version: $psVersion" -ForegroundColor Cyan
+$psVersion = Get-PSVersion
+Write-Emoji "[i] Using PowerShell version: $psVersion" "Cyan"
 
 # Load already processed and error indexes
 $processedIds = @()
 if (Test-Path $processedFile) {
     $processedIds = Get-Content $processedFile | ForEach-Object { [int]$_ }
-    Write-Host "📜 Loaded $($processedIds.Count) processed indexes from $processedFile" -ForegroundColor Cyan
+    Write-Emoji "[f] Loaded $($processedIds.Count) processed indexes from $processedFile" "Cyan"
 }
 
 $errorIds = @()
 if (Test-Path $errorFile) {
     $errorIds = Get-Content $errorFile | ForEach-Object { [int]$_ }
-    Write-Host "📜 Loaded $($errorIds.Count) error indexes from $errorFile" -ForegroundColor Cyan
+    Write-Emoji "[f] Loaded $($errorIds.Count) error indexes from $errorFile" "Cyan"
 }
 
 # Extract fully downloaded indexes from mediaDir
@@ -290,7 +315,7 @@ if (Test-Path $mediaDir) {
             $downloadedIds += [int]$Matches[1]
         }
     }
-    Write-Host "📂 Found $($downloadedIds.Count) fully downloaded indexes from files in $mediaDir" -ForegroundColor Cyan
+    Write-Emoji "[d] Found $($downloadedIds.Count) fully downloaded indexes from files in $mediaDir" "Cyan"
 }
 
 # Combine processed, error, and downloaded for skipping
@@ -311,8 +336,8 @@ $anySuccess = $false
 
 # Export all messages to tdl-export.json (supports numeric internal and username)
 $exportCommand = ".\tdl.exe chat export -c $channelId --with-content -o `"$exportFile`""
-Write-Host "🟡 Starting export for chat ID: $channelId" -ForegroundColor Yellow
-Write-Host "📋 Export Command: $exportCommand" -ForegroundColor Gray
+Write-Emoji "[*] Starting export for chat ID: $channelId" "Yellow"
+Write-Emoji "[c] Export Command: $exportCommand" "Gray"
 "[$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))] Starting export for chat ID: $channelId" | Out-File -FilePath $logFile -Append
 $exportCommand | Out-File -FilePath $logFile -Append
 
@@ -321,13 +346,13 @@ try {
     $exportOutput | Out-File -FilePath $logFile -Append
 
     if ($exportOutput -match "done!") {
-        Write-Host "🟢 Successfully exported messages to $exportFile" -ForegroundColor Green
+        Write-Emoji "[+] Successfully exported messages to $exportFile" "Green"
     } else {
-        Write-Host "🔴 Failed to export messages for chat ID: $channelId" -ForegroundColor Red
+        Write-Emoji "[x] Failed to export messages for chat ID: $channelId" "Red"
         exit
     }
 } catch {
-    Write-Host "🔴 Error executing export command: $_" -ForegroundColor Red
+    Write-Emoji "[x] Error executing export command: $_" "Red"
     $_ | Out-File -FilePath $logFile -Append
     exit
 }
@@ -335,9 +360,9 @@ try {
 # Main download loop with retries
 $retryCount = 0
 while ($retryCount -lt $maxRetries) {
-    Write-Host "🟡 Starting download attempt $($retryCount + 1) of $maxRetries" -ForegroundColor Yellow
+    Write-Emoji "[*] Starting download attempt $($retryCount + 1) of $maxRetries" "Yellow"
     $downloadCommand = ".\tdl.exe download --file `"$exportFile`" --dir `"$mediaDir`" -l $downloadLimit -t $threads --skip-same"
-    Write-Host "📋 Download Command: $downloadCommand" -ForegroundColor Gray
+    Write-Emoji "[c] Download Command: $downloadCommand" "Gray"
     "[$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))] Starting download attempt $($retryCount + 1)" | Out-File -FilePath $logFile -Append
     $downloadCommand | Out-File -FilePath $logFile -Append
 
@@ -353,7 +378,7 @@ while ($retryCount -lt $maxRetries) {
         }
         if ($processRunning) {
             $process | Stop-Process -Force
-            Write-Host "🔴 Timeout reached after $timeoutSeconds seconds" -ForegroundColor Red
+            Write-Emoji "[x] Timeout reached after $timeoutSeconds seconds" "Red"
             throw "Timeout"
         }
         $output | Out-File -FilePath $logFile -Append
@@ -367,7 +392,7 @@ while ($retryCount -lt $maxRetries) {
                 $id = [int]$Matches[1]
                 if (-not ($allProcessedIds -contains $id)) {
                     $successfulIds += $id
-                    Write-Host "✅ Downloaded $($file.Name) for index $id" -ForegroundColor Green
+                    Write-Emoji "[ok] Downloaded $($file.Name) for index $id" "Green"
                     Save-ProcessedId $id
                 }
             }
@@ -379,7 +404,7 @@ while ($retryCount -lt $maxRetries) {
                 $failedId = [int]$match.Matches.Groups[1].Value
                 if (-not ($allProcessedIds -contains $failedId)) {
                     $failedIds += $failedId
-                    Write-Host "🔴 Failed to download index $failedId (may be deleted or empty)" -ForegroundColor Red
+                    Write-Emoji "[x] Failed to download index $failedId (may be deleted or empty)" "Red"
                     Save-ErrorId $failedId
                 }
             }
@@ -387,41 +412,41 @@ while ($retryCount -lt $maxRetries) {
 
         # Summarize the batch result
         if ($successfulIds.Count -gt 0 -and $failedIds.Count -eq 0) {
-            Write-Host "🟢 Successfully downloaded indexes: $($successfulIds -join ',')" -ForegroundColor Green
+            Write-Emoji "[+] Successfully downloaded indexes: $($successfulIds -join ',')" "Green"
             $anySuccess = $true
             break
         } elseif ($successfulIds.Count -gt 0 -and $failedIds.Count -gt 0) {
-            Write-Host "🟡 Partial success: $($successfulIds -join ',') downloaded; $($failedIds -join ',') failed" -ForegroundColor Yellow
+            Write-Emoji "[*] Partial success: $($successfulIds -join ',') downloaded; $($failedIds -join ',') failed" "Yellow"
             $anySuccess = $true
             break
         } elseif ($failedIds.Count -gt 0) {
-            Write-Host "🔴 Failed indexes: $($failedIds -join ',')" -ForegroundColor Red
+            Write-Emoji "[x] Failed indexes: $($failedIds -join ',')" "Red"
             $retryCount++
             if ($retryCount -ge $maxRetries) {
-                Write-Host "🔴 Exceeded max retries ($maxRetries)" -ForegroundColor Red
+                Write-Emoji "[x] Exceeded max retries ($maxRetries)" "Red"
                 break
             }
-            Write-Host "🔶 Retrying download..." -ForegroundColor Yellow
+            Write-Emoji "[*] Retrying download..." "Yellow"
             continue
         } else {
-            Write-Host "🔴 No new files downloaded or errors reported" -ForegroundColor Red
+            Write-Emoji "[x] No new files downloaded or errors reported" "Red"
             $retryCount++
             if ($retryCount -ge $maxRetries) {
-                Write-Host "🔴 Exceeded max retries ($maxRetries)" -ForegroundColor Red
+                Write-Emoji "[x] Exceeded max retries ($maxRetries)" "Red"
                 break
             }
-            Write-Host "🔶 Retrying download..." -ForegroundColor Yellow
+            Write-Emoji "[*] Retrying download..." "Yellow"
             continue
         }
     } catch {
-        Write-Host "🔴 Error executing download command: $_" -ForegroundColor Red
+        Write-Emoji "[x] Error executing download command: $_" "Red"
         $_ | Out-File -FilePath $logFile -Append
         $retryCount++
         if ($retryCount -ge $maxRetries) {
-            Write-Host "🔴 Exceeded max retries ($maxRetries)" -ForegroundColor Red
+            Write-Emoji "[x] Exceeded max retries ($maxRetries)" "Red"
             break
         }
-        Write-Host "🔶 Retrying download..." -ForegroundColor Yellow
+        Write-Emoji "[*] Retrying download..." "Yellow"
     }
 }
 
@@ -429,31 +454,31 @@ while ($retryCount -lt $maxRetries) {
 $incompleteFiles = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_\d+_.*" -and $_.Length -eq 0 }
 foreach ($incompleteFile in $incompleteFiles) {
     Remove-Item -Path $incompleteFile.FullName -Force
-    Write-Host "❌ Removed incomplete file $($incompleteFile.Name)" -ForegroundColor Red
+    Write-Emoji "[x] Removed incomplete file $($incompleteFile.Name)" "Red"
 }
 
 # Cleanup export, processed, and error files after completion
 if (Test-Path $exportFile) {
     Remove-Item -Path $exportFile -Force
-    Write-Host "🗑️ File $exportFile deleted after completion." -ForegroundColor Cyan
+    Write-Emoji "[del] File $exportFile deleted after completion." "Cyan"
 }
 if (Test-Path $processedFile) {
     Remove-Item -Path $processedFile -Force
-    Write-Host "🗑️ File $processedFile deleted after completion." -ForegroundColor Cyan
+    Write-Emoji "[del] File $processedFile deleted after completion." "Cyan"
 }
 if (Test-Path $errorFile) {
     Remove-Item -Path $errorFile -Force
-    Write-Host "🗑️ File $errorFile deleted after completion." -ForegroundColor Cyan
+    Write-Emoji "[del] File $errorFile deleted after completion." "Cyan"
 }
 
 # Auto-open folder if any successful download happened
 if ($anySuccess) {
-    Write-Host "📂 Opening download folder: $mediaDir" -ForegroundColor Cyan
+    Write-Emoji "[d] Opening download folder: $mediaDir" "Cyan"
     try {
         Start-Process explorer.exe -ArgumentList $mediaDir
     } catch {
-        Write-Host "⚠️ Не удалось открыть папку: $_" -ForegroundColor Yellow
+        Write-Emoji "[!] Не удалось открыть папку: $_" "Yellow"
     }
 }
 
-Write-Host "🎉 Completed! All indexes processed." -ForegroundColor Cyan
+Write-Emoji "[done] Completed! All indexes processed." "Cyan"

@@ -390,40 +390,21 @@ $retryCount = 0
 while ($retryCount -lt $maxRetries) {
     Write-Emoji "[*] Starting download attempt $($retryCount + 1) of $maxRetries" "Yellow"
     
-    # Collect all unprocessed indexes
-    $unprocessedIds = @()
-    for ($i = $startId; $i -le $endId; $i++) {
-        if (-not ($allProcessedIds -contains $i)) {
-            $unprocessedIds += $i
+    # Process indexes in batches
+    for ($currentId = $startId; $currentId -le $endId; $currentId++) {
+        if ($allProcessedIds -contains $currentId) {
+            Write-Emoji "[s] Skipped index: $currentId (processed, errored, or fully downloaded)" "Cyan"
+            continue
         }
-    }
-    
-    if ($unprocessedIds.Count -eq 0) {
-        Write-Emoji "[+] All indexes processed successfully!" "Green"
-        break
-    }
-    
-    Write-Emoji "[i] Processing $($unprocessedIds.Count) unprocessed indexes in batches of $downloadLimit" "Cyan"
-    
-    # Process indexes in batches of downloadLimit
-    for ($batchStart = 0; $batchStart -lt $unprocessedIds.Count; $batchStart += $downloadLimit) {
-        $batchEnd = [Math]::Min($batchStart + $downloadLimit - 1, $unprocessedIds.Count - 1)
-        $batchIds = $unprocessedIds[$batchStart..$batchEnd]
+
+        # Build URL for current index
+        $currentUrl = $telegramUrl + $currentId.ToString()
         
-        Write-Emoji "[c] Processing batch: $($batchIds -join ', ')" "Gray"
-        
-        # Build URLs for current batch
-        $urls = @()
-        foreach ($id in $batchIds) {
-            $urls += $telegramUrl + $id.ToString()
-        }
-        
-        # Build command with multiple URLs
-        $urlArgs = $urls | ForEach-Object { "--url `"$_`"" }
-        $command = ".\tdl.exe download --desc --dir `"$mediaDir`" $($urlArgs -join ' ') -l $downloadLimit -t $threads"
-        
+        # Build and run command
+        $command = ".\tdl.exe download --desc --dir `"$mediaDir`" --url `"$currentUrl`" -l $downloadLimit -t $threads"
+        Write-Emoji "[c] Debug: Processing index $currentId" "Gray"
         Write-Emoji "[c] Command: $command" "Gray"
-        "[$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))] Processing batch: $($batchIds -join ', ')" | Out-File -FilePath $logFile -Append
+        "[$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))] Processing: $currentUrl" | Out-File -FilePath $logFile -Append
         $command | Out-File -FilePath $logFile -Append
 
         try {
@@ -439,42 +420,32 @@ while ($retryCount -lt $maxRetries) {
             }
             if ($processRunning) {
                 $process | Stop-Process -Force
-                Write-Emoji "[x] Timeout reached for batch after $timeoutSeconds seconds" "Red"
+                Write-Emoji "[x] Timeout reached for: $currentId after $timeoutSeconds seconds" "Red"
                 throw "Timeout"
             }
             
             $output | Out-File -FilePath $logFile -Append
 
-            # Check for downloaded files for each ID in batch
-            $successCount = 0
-            foreach ($id in $batchIds) {
-                $downloadedFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_" -and $_.Length -gt 0 -and $_.Extension -ne ".tmp" } | Select-Object -First 1
-                if ($downloadedFile) {
-                    Write-Emoji "[ok] Downloaded $($downloadedFile.Name) for index $id" "Green"
-                    Save-ProcessedId $id
-                    $allProcessedIds += $id
-                    $successCount++
-                } else {
-                    Write-Emoji "[x] Failed to download index $id (may be deleted or empty)" "Red"
-                    Save-ErrorId $id
-                    $allProcessedIds += $id
-                }
+            # Check for downloaded file
+            $downloadedFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${currentId}_" -and $_.Length -gt 0 -and $_.Extension -ne ".tmp" } | Select-Object -First 1
+            if ($downloadedFile) {
+                Write-Emoji "[ok] Downloaded $($downloadedFile.Name) for index $currentId" "Green"
+                Save-ProcessedId $currentId
+                $allProcessedIds += $currentId
+            } else {
+                Write-Emoji "[x] Failed to download index $currentId (may be deleted or empty)" "Red"
+                Save-ErrorId $currentId
+                $allProcessedIds += $currentId
             }
-            
-            Write-Emoji "[+] Batch completed: $successCount/$($batchIds.Count) successful" "Green"
-            
         } catch {
-            Write-Emoji "[x] Error executing command for batch: $_" "Red"
+            Write-Emoji "[x] Error executing command for: $currentId - $_" "Red"
             $_ | Out-File -FilePath $logFile -Append
-            # Mark all IDs in batch as errors
-            foreach ($id in $batchIds) {
-                Save-ErrorId $id
-                $allProcessedIds += $id
-            }
+            Save-ErrorId $currentId
+            $allProcessedIds += $currentId
         }
     }
 
-    # Check if we need to retry
+    # Check if all indexes were processed
     $remainingIds = @()
     for ($i = $startId; $i -le $endId; $i++) {
         if (-not ($allProcessedIds -contains $i)) {

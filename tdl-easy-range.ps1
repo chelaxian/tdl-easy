@@ -422,52 +422,15 @@ while ($retryCount -lt $maxRetries) {
         $command | Out-File -FilePath $logFile -Append
 
         try {
-            # Create a process to handle interactive prompts automatically
-            $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-            $processInfo.FileName = ".\tdl.exe"
-            $processInfo.Arguments = "download --desc --dir `"$mediaDir`" $($urlArgs -join ' ') -l $downloadLimit -t $threads"
-            $processInfo.WorkingDirectory = $tdl_path
-            $processInfo.UseShellExecute = $false
-            $processInfo.RedirectStandardInput = $true
-            $processInfo.RedirectStandardOutput = $true
-            $processInfo.RedirectStandardError = $true
-            $processInfo.CreateNoWindow = $false
+            # Use echo to automatically answer "y" to prompts
+            $echoCommand = "echo y | .\tdl.exe download --desc --dir `"$mediaDir`" $($urlArgs -join ' ') -l $downloadLimit -t $threads"
+            Write-Emoji "[c] Executing: $echoCommand" "Gray"
             
-            $process = New-Object System.Diagnostics.Process
-            $process.StartInfo = $processInfo
-            $process.Start() | Out-Null
-            
-            # Send "y" to any interactive prompts
-            $process.StandardInput.WriteLine("y")
-            $process.StandardInput.WriteLine("y")
-            $process.StandardInput.WriteLine("y")
-            $process.StandardInput.WriteLine("y")
-            $process.StandardInput.WriteLine("y")
-            $process.StandardInput.WriteLine("y")
-            $process.StandardInput.WriteLine("y")
-            $process.StandardInput.WriteLine("y")
-            $process.StandardInput.WriteLine("y")
-            $process.StandardInput.WriteLine("y")
-            $process.StandardInput.Close()
-            
-            # Read output
-            $output = $process.StandardOutput.ReadToEnd()
-            $errorOutput = $process.StandardError.ReadToEnd()
-            
-            # Wait for process to complete
-            $process.WaitForExit($timeoutSeconds * 1000)
-            
-            if (-not $process.HasExited) {
-                $process.Kill()
-                Write-Emoji "[x] Timeout reached for batch after $timeoutSeconds seconds" "Red"
-                throw "Timeout"
+            $output = Invoke-Expression $echoCommand 2>&1 | ForEach-Object { 
+                Write-Host $_ -ForegroundColor White; $_ 
             }
             
-            # Display output
-            if ($output) { Write-Host $output -ForegroundColor White }
-            if ($errorOutput) { Write-Host $errorOutput -ForegroundColor Red }
-            
-            $fullOutput | Out-File -FilePath $logFile -Append
+            $output | Out-File -FilePath $logFile -Append
 
             # Check for downloaded files for each ID in batch
             foreach ($id in $batchIds) {

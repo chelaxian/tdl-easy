@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import simpledialog, messagebox
+from tkinter import simpledialog, messagebox, filedialog
 import subprocess
 import os
 import sys
@@ -84,6 +84,8 @@ MENU_TEXT = {
         'continue_task_message': 'Found saved parameters from a previous task. Do you want to continue with these settings?',
         'continue_task_yes': 'Yes',
         'continue_task_no': 'No',
+        # Path picker
+        'browse_button': 'Browse',
     },
     'RU': {
         'title': 'TDL Easy Launcher',
@@ -143,6 +145,8 @@ MENU_TEXT = {
         'continue_task_message': 'Найдены сохраненные параметры предыдущей задачи. Продолжить с этими настройками?',
         'continue_task_yes': 'Да',
         'continue_task_no': 'Нет',
+        # Path picker
+        'browse_button': 'Обзор',
     }
 }
 
@@ -369,6 +373,49 @@ class IntegerInputDialog(simpledialog.Dialog):
         except Exception:
             self.result = None
 
+class PathInputDialog(simpledialog.Dialog):
+    def __init__(self, parent, title, prompt, initialvalue='', width=80):
+        self.prompt = prompt
+        self.initialvalue = initialvalue
+        self.entry_width = width
+        self.result = None
+        super().__init__(parent, title)
+
+    def body(self, master):
+        self.attributes('-topmost', True)
+        tk.Label(master, text=self.prompt).grid(row=0, sticky='w', padx=5, pady=(5,0))
+        
+        # Create frame for entry and browse button
+        input_frame = tk.Frame(master)
+        input_frame.grid(row=1, padx=5, pady=(0,5), sticky='ew')
+        
+        # Entry field
+        self.entry = tk.Entry(input_frame, width=self.entry_width)
+        self.entry.pack(side='left', fill='x', expand=True)
+        self.entry.insert(0, self.initialvalue)
+        self.entry.focus_set()
+        
+        # Browse button
+        browse_button = tk.Button(input_frame, text=MENU_TEXT[LANG]['browse_button'], command=self.browse_directory)
+        browse_button.pack(side='right', padx=(5,0))
+        
+        # Configure grid weights
+        master.columnconfigure(0, weight=1)
+        input_frame.columnconfigure(0, weight=1)
+        
+        return self.entry
+
+    def browse_directory(self):
+        directory = filedialog.askdirectory(initialdir=self.entry.get() or os.path.expanduser("~"))
+        if directory:
+            # Convert forward slashes to backslashes for Windows compatibility
+            directory = os.path.normpath(directory)
+            self.entry.delete(0, 'end')
+            self.entry.insert(0, directory)
+
+    def apply(self):
+        self.result = self.entry.get()
+
 # ==============================================================================
 # TDL actions
 # ==============================================================================
@@ -394,7 +441,10 @@ function Read-Host {{
 $configSource = '{config_source.replace("'", "''")}'
 $configDest = '{config_dest.replace("'", "''")}'
 if (Test-Path $configSource) {{
-    Copy-Item -Path $configSource -Destination $configDest -Force
+    # Only copy if source and destination are different
+    if ($configSource -ne $configDest) {{
+        Copy-Item -Path $configSource -Destination $configDest -Force
+    }}
 }}
 
 & '.\\{original_name}'
@@ -466,7 +516,10 @@ def download_single_file():
 $configSource = '{config_source.replace("'", "''")}'
 $configDest = '{config_dest.replace("'", "''")}'
 if (Test-Path $configSource) {{
-    Copy-Item -Path $configSource -Destination $configDest -Force
+    # Only copy if source and destination are different
+    if ($configSource -ne $configDest) {{
+        Copy-Item -Path $configSource -Destination $configDest -Force
+    }}
 }}
 """
         new_content = config_copy_code + new_content
@@ -532,13 +585,13 @@ def download_range():
             clear_saved_parameters()
     
     # If not using saved parameters, proceed with normal input
-    dlg = StringInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['tdl_path_title'], MENU_TEXT[LANG]['tdl_path_prompt'], initialvalue=default_tdl, width=80)
+    dlg = PathInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['tdl_path_title'], MENU_TEXT[LANG]['tdl_path_prompt'], initialvalue=default_tdl, width=80)
     tdl_path = dlg.result or default_tdl
     if not os.path.exists(tdl_path):
         messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['tdl_path_not_found'].format(path=tdl_path))
         return
 
-    dlg2 = StringInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['media_dir_title'], MENU_TEXT[LANG]['media_dir_prompt'],
+    dlg2 = PathInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['media_dir_title'], MENU_TEXT[LANG]['media_dir_prompt'],
                              initialvalue=launcher_dir, width=80)
     media_dir = dlg2.result or launcher_dir
     if not os.path.exists(media_dir):
@@ -668,13 +721,13 @@ def download_full_chat():
             clear_saved_parameters()
     
     # If not using saved parameters, proceed with normal input
-    dlg = StringInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['tdl_path_title'], MENU_TEXT[LANG]['tdl_path_prompt'], initialvalue=default_tdl, width=80)
+    dlg = PathInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['tdl_path_title'], MENU_TEXT[LANG]['tdl_path_prompt'], initialvalue=default_tdl, width=80)
     tdl_path = dlg.result or default_tdl
     if not os.path.exists(tdl_path):
         messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['tdl_path_not_found'].format(path=tdl_path))
         return
 
-    dlg2 = StringInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['media_dir_title'], MENU_TEXT[LANG]['media_dir_prompt'],
+    dlg2 = PathInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['media_dir_title'], MENU_TEXT[LANG]['media_dir_prompt'],
                              initialvalue=launcher_dir, width=80)
     media_dir = dlg2.result or launcher_dir
     if not os.path.exists(media_dir):

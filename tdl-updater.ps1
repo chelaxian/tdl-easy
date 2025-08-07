@@ -1,25 +1,10 @@
-# PowerShell version detection and emoji compatibility
-function Get-PSVersion {
-    try {
-        return $PSVersionTable.PSVersion.Major
-    } catch {
-        return 5  # Default to 5 if detection fails
-    }
-}
-
+# Simple colored output function
 function Write-Emoji {
     param(
         [string]$Text,
         [string]$Color = "White"
     )
-    $psVersion = Get-PSVersion
-    if ($psVersion -ge 7) {
-        Write-Host $Text -ForegroundColor $Color
-    } else {
-        # Replace emojis with ASCII equivalents for PS 5.x
-        $asciiText = $Text -replace "⚠️", "[!]" -replace "ℹ️", "[i]" -replace "🟡", "[*]" -replace "🟢", "[+]" -replace "🔴", "[x]" -replace "📜", "[f]" -replace "📂", "[d]" -replace "⏭️", "[s]" -replace "📋", "[c]" -replace "✅", "[ok]" -replace "🗑️", "[del]" -replace "🎉", "[done]"
-        Write-Host $asciiText -ForegroundColor $Color
-    }
+    Write-Host $Text -ForegroundColor $Color
 }
 
 # Parameters

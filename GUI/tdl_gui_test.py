@@ -108,29 +108,35 @@ def sanitize_script(script_path):
         messagebox.showerror('Error', str(e))
         return script_path
 
-def run_powershell_script(script_path, extra_command=None):
+def run_powershell_script(script_path=None, extra_command=None):
     """
-    Launch a PowerShell script; sanitize if PS version < 7.
+    Launch a PowerShell script or command in its own window and close it automatically when done.
     """
-    if not os.path.isfile(script_path):
-        messagebox.showerror('Error', f'Script not found: {os.path.basename(script_path)}')
-        return
-    ps_ver = get_powershell_version()
-    if ps_ver < 7 and extra_command is None:
-        script_path = sanitize_script(script_path)
-    cmd = [
-        'cmd', '/c', 'start', 'PowerShell.exe',
-        '-NoExit',
-        '-ExecutionPolicy', 'Bypass',
-    ]
-    if extra_command:
-        cmd += ['-Command', extra_command]
+    # Если запускаем только команду без файла
+    if extra_command and not script_path:
+        cmd = [
+            'cmd','/c','start','""','PowerShell.exe',
+            '-ExecutionPolicy','Bypass',
+            '-Command', f"{extra_command}; exit"
+        ]
     else:
-        cmd += ['-File', script_path]
+        if not os.path.isfile(script_path):
+            messagebox.showerror('Error', f'Script not found: {os.path.basename(script_path)}')
+            return
+        ps_ver = get_powershell_version()
+        if ps_ver < 7 and extra_command is None:
+            script_path = sanitize_script(script_path)
+        cmd = [
+            'cmd','/c','start','""','PowerShell.exe',
+            '-ExecutionPolicy','Bypass',
+            '-File', script_path
+        ]
     try:
-        subprocess.Popen(cmd, cwd=os.path.dirname(script_path))
+        subprocess.Popen(cmd, cwd=os.path.dirname(script_path) if script_path else get_launcher_dir())
     except Exception as e:
         messagebox.showerror('Launch Error', str(e))
+
+
 
 def ensure_and_copy(src_rel_name):
     """
@@ -256,28 +262,25 @@ def install_update_tdl():
 
 def login_telegram():
     """
-    Handle TELEGRAM LOGIN action.
+    Handle TELEGRAM LOGIN action with auto-closing window.
     """
     launcher_dir = get_launcher_dir()
     tdl_exe = os.path.join(launcher_dir, 'tdl.exe')
     if not os.path.isfile(tdl_exe):
         messagebox.showerror('Error', 'tdl.exe not found in the launch directory. Please install/update TDL first.')
         return
+
     messagebox.showinfo(
-        'Telegram Login',
+        MENU_TEXT[LANG]['telegram_login'],
         ("A console window will open. Manually choose user id, then when asked\n"
          "'Do you want to logout existing desktop session?' answer N.")
     )
-    cmd = [
-        'cmd', '/c', 'start', 'PowerShell.exe',
-        '-NoExit',
-        '-ExecutionPolicy', 'Bypass',
-        '-Command', f"& '{tdl_exe}' login"
-    ]
-    try:
-        subprocess.Popen(cmd, cwd=launcher_dir)
-    except Exception as e:
-        messagebox.showerror('Launch Error', str(e))
+    # запускаем через нашу функцию, окно закроется по окончании
+    run_powershell_script(
+        None, 
+        extra_command=f"& '{tdl_exe}' login"
+    )
+
 
 def download_single_file():
     """

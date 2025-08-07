@@ -32,7 +32,7 @@ MENU_TEXT = {
         'download_range': 'DOWNLOAD POSTS RANGE',
         'download_full': 'DOWNLOAD FULL CHAT',
         'exit': 'EXIT',
-        'hint': 'PowerShell windows stay open for review/input.',
+        'hint': 'PowerShell windows will auto-close after execution.',
         'button_en': 'EN',
         'button_ru': 'RU',
     },
@@ -45,7 +45,7 @@ MENU_TEXT = {
         'download_range': 'СКАЧАТЬ ДИАПАЗОН ПОСТОВ',
         'download_full': 'СКАЧАТЬ ВСЁ ИЗ ЧАТА',
         'exit': 'ВЫХОД',
-        'hint': 'PowerShell-окна остаются открытыми для просмотра/ввода параметров.',
+        'hint': 'PowerShell-окна авто-закрываются по завершении.',
         'button_en': 'EN',
         'button_ru': 'RU',
     }
@@ -108,29 +108,29 @@ def sanitize_script(script_path):
         messagebox.showerror('Error', str(e))
         return script_path
 
-def run_powershell_script(script_path, extra_command=None):
+def run_powershell_script(script_path=None, extra_command=None):
     """
-    Launch a PowerShell script or command in its own window and close it automatically when done.
+    Launch a PowerShell script or command in its own window and
+    close the window automatically when done.
     """
-    # If we're running a direct command without a file
+    # if only a command is provided (no script file)
     if extra_command and not script_path:
         cmd = [
-            'cmd', '/c', 'start', '""', 'PowerShell.exe',
+            'cmd', '/c', 'start', '', 'PowerShell.exe',
             '-ExecutionPolicy', 'Bypass',
             '-Command', f"{extra_command}; exit"
         ]
         cwd = get_launcher_dir()
     else:
-        # Must have a valid script file
+        # script_path must exist
         if not os.path.isfile(script_path):
             messagebox.showerror('Error', f'Script not found: {os.path.basename(script_path)}')
             return
-        # Sanitize if PS < 7
         ps_ver = get_powershell_version()
         if ps_ver < 7 and extra_command is None:
             script_path = sanitize_script(script_path)
         cmd = [
-            'cmd', '/c', 'start', '""', 'PowerShell.exe',
+            'cmd', '/c', 'start', '', 'PowerShell.exe',
             '-ExecutionPolicy', 'Bypass',
             '-File', script_path
         ]
@@ -264,19 +264,18 @@ def install_update_tdl():
 
 def login_telegram():
     """
-    Handle TELEGRAM LOGIN action with auto-closing window.
+    Handle TELEGRAM LOGIN action.
     """
     launcher_dir = get_launcher_dir()
     tdl_exe = os.path.join(launcher_dir, 'tdl.exe')
     if not os.path.isfile(tdl_exe):
-        messagebox.showerror('Error', 'tdl.exe not found in the launch directory. Please install/update TDL first.')
+        messagebox.showerror('Error', 'tdl.exe not found. Please install/update TDL first.')
         return
     messagebox.showinfo(
         MENU_TEXT[LANG]['telegram_login'],
-        ("A console window will open. Manually choose user id, then when asked\n"
-         "'Do you want to logout existing desktop session?' answer N.")
+        ("A console window will open. Manually choose user id,\n"
+         "then at the prompt 'Do you want to logout existing desktop session?' answer N.")
     )
-    # launch via our helper so window auto-closes
     run_powershell_script(
         None,
         extra_command=f"& '{tdl_exe}' login"
@@ -295,11 +294,10 @@ def download_single_file():
         return
     url = url.strip()
     if not (url.startswith('http://') or url.startswith('https://')):
-        messagebox.showwarning('Invalid URL', 'Expecting full URL starting with http:// or https://')
+        messagebox.showwarning('Invalid URL', 'URL must start with http:// or https://')
         return
-    # use original pattern for single message or topic message URL
     if not re.match(r"^https?://t\.me/(?:(?:c/\d+/(?:\d+))(?:/\d+)?|(?:[A-Za-z0-9_]{5,32}/\d+))$", url):
-        messagebox.showwarning('Invalid URL', 'Expected link like https://t.me/username/123 or https://t.me/c/12345678/123 or https://t.me/c/12345678/456/123')
+        messagebox.showwarning('Invalid URL', 'Expected https://t.me/username/123 or https://t.me/c/12345678/123')
         return
     launcher_dir = get_launcher_dir()
     original = ensure_and_copy('tdl-easy-single.ps1')
@@ -311,7 +309,8 @@ def download_single_file():
         with open(original, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
         escaped_url = url.replace("'", "''")
-        new_content = content.replace('$telegramUrl = Read-Host', f"$telegramUrl = '{escaped_url}'")
+        new_content = content.replace('$telegramUrl = Read-Host',
+                                      f"$telegramUrl = '{escaped_url}'")
         with open(wrapper_path, 'w', encoding='utf-8') as f:
             f.write(new_content)
     except Exception as e:
@@ -326,13 +325,14 @@ def download_range():
     launcher_dir = get_launcher_dir()
     default_tdl = launcher_dir
     dlg = StringInputDialog(MAIN_ROOT, 'TDL path', 'Path to TDL:', initialvalue=default_tdl, width=80)
-    tdl_path = dlg.result if dlg.result and dlg.result.strip() else default_tdl
+    tdl_path = dlg.result or default_tdl
     if not os.path.exists(tdl_path):
         messagebox.showerror('Error', f'TDL path not found: {tdl_path}')
         return
 
-    dlg2 = StringInputDialog(MAIN_ROOT, 'Media directory', 'Directory to save into:', initialvalue=launcher_dir, width=80)
-    media_dir = dlg2.result if dlg2.result and dlg2.result.strip() else launcher_dir
+    dlg2 = StringInputDialog(MAIN_ROOT, 'Media directory', 'Directory to save into:',
+                             initialvalue=launcher_dir, width=80)
+    media_dir = dlg2.result or launcher_dir
     if not os.path.exists(media_dir):
         messagebox.showerror('Error', f'Media directory not found: {media_dir}')
         return
@@ -340,7 +340,7 @@ def download_range():
     while True:
         base_link = simpledialog.askstring(
             'Base Telegram URL',
-            'Enter base link (https://t.me/c/12345678/ or https://t.me/username/ or https://t.me/c/2267448302/166/):',
+            'Enter base link (https://t.me/c/12345678/ or https://t.me/username/):',
             parent=MAIN_ROOT
         )
         if not base_link:
@@ -348,25 +348,23 @@ def download_range():
         base_link = base_link.strip()
         if not base_link.endswith('/'):
             base_link += '/'
-        # use original patterns for base links
         if (re.match(r"^https?://t\.me/c/\d+/$", base_link)
                 or re.match(r"^https?://t\.me/c/\d+/\d+/$", base_link)
                 or re.match(r"^https?://t\.me/[A-Za-z0-9_]{5,32}/$", base_link)):
             break
-        messagebox.showwarning('Invalid Format', 'Expected https://t.me/c/12345678/ or https://t.me/c/12345678/123/ or https://t.me/username/ with trailing slash.')
+        messagebox.showwarning('Invalid Format',
+                               'Expected https://t.me/c/12345678/ or https://t.me/username/')
 
     while True:
-        start_id_dlg = IntegerInputDialog(MAIN_ROOT, 'Start Index', 'Enter startId (positive integer, default 1):', initialvalue=1, minvalue=1)
+        start_id_dlg = IntegerInputDialog(MAIN_ROOT, 'Start Index',
+                                          'Enter startId (positive integer, default 1):',
+                                          initialvalue=1, minvalue=1)
         start_id = start_id_dlg.result
         if start_id is None:
             return
-        end_id_dlg = IntegerInputDialog(
-            MAIN_ROOT,
-            'End Index',
-            f'Enter endId (>= {start_id}, default {start_id + 99}):',
-            initialvalue=start_id + 99,
-            minvalue=start_id
-        )
+        end_id_dlg = IntegerInputDialog(MAIN_ROOT, 'End Index',
+                                        f'Enter endId (>= {start_id}, default {start_id+99}):',
+                                        initialvalue=start_id+99, minvalue=start_id)
         end_id = end_id_dlg.result
         if end_id is None:
             return
@@ -376,15 +374,18 @@ def download_range():
         break
 
     while True:
-        dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, 'Task Limit', 'Max concurrent download tasks (1-10) [default 2]:', initialvalue=2, minvalue=1, maxvalue=10)
+        dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, 'Task Limit',
+                                          'Max concurrent download tasks (1-10) [default 2]:',
+                                          initialvalue=2, minvalue=1, maxvalue=10)
         dl_limit = dl_limit_dlg.result
         if dl_limit is None:
             return
         if 1 <= dl_limit <= 10:
             break
-
     while True:
-        threads_dlg = IntegerInputDialog(MAIN_ROOT, 'Threads', 'Max threads per task (1-8) [default 4]:', initialvalue=4, minvalue=1, maxvalue=8)
+        threads_dlg = IntegerInputDialog(MAIN_ROOT, 'Threads',
+                                         'Max threads per task (1-8) [default 4]:',
+                                         initialvalue=4, minvalue=1, maxvalue=8)
         threads = threads_dlg.result
         if threads is None:
             return
@@ -417,13 +418,14 @@ def download_full_chat():
     launcher_dir = get_launcher_dir()
     default_tdl = launcher_dir
     dlg = StringInputDialog(MAIN_ROOT, 'TDL path', 'Path to TDL:', initialvalue=default_tdl, width=80)
-    tdl_path = dlg.result if dlg.result and dlg.result.strip() else default_tdl
+    tdl_path = dlg.result or default_tdl
     if not os.path.exists(tdl_path):
         messagebox.showerror('Error', f'TDL path not found: {tdl_path}')
         return
 
-    dlg2 = StringInputDialog(MAIN_ROOT, 'Media directory', 'Directory to save into:', initialvalue=launcher_dir, width=80)
-    media_dir = dlg2.result if dlg2.result and dlg2.result.strip() else launcher_dir
+    dlg2 = StringInputDialog(MAIN_ROOT, 'Media directory', 'Directory to save into:',
+                             initialvalue=launcher_dir, width=80)
+    media_dir = dlg2.result or launcher_dir
     if not os.path.exists(media_dir):
         messagebox.showerror('Error', f'Media directory not found: {media_dir}')
         return
@@ -431,29 +433,32 @@ def download_full_chat():
     while True:
         msg_url = simpledialog.askstring(
             'Message URL',
-            'Enter Telegram message URL (https://t.me/c/12345678/123 or https://t.me/username/123 or https://t.me/c/2267448302/166/4771):',
+            'Enter Telegram message URL (https://t.me/c/12345678/123 or https://t.me/username/123):',
             parent=MAIN_ROOT
         )
         if not msg_url:
             return
         msg_url = msg_url.strip()
-        # use original patterns for full chat URLs
         if (re.match(r"^https?://t\.me/c/\d+/\d+$", msg_url)
                 or re.match(r"^https?://t\.me/c/\d+/\d+/\d+$", msg_url)
                 or re.match(r"^https?://t\.me/[A-Za-z0-9_]{5,32}/\d+$", msg_url)):
             break
-        messagebox.showwarning('Invalid Format', 'Expected https://t.me/username/123 or https://t.me/c/12345678/123 or topic message like https://t.me/c/2267448302/166/4771')
+        messagebox.showwarning('Invalid Format',
+                               'Expected https://t.me/username/123 or https://t.me/c/.../123')
 
     while True:
-        dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, 'Task Limit', 'Max concurrent download tasks (1-10) [default 2]:', initialvalue=2, minvalue=1, maxvalue=10)
+        dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, 'Task Limit',
+                                          'Max concurrent download tasks (1-10) [default 2]:',
+                                          initialvalue=2, minvalue=1, maxvalue=10)
         dl_limit = dl_limit_dlg.result
         if dl_limit is None:
             return
         if 1 <= dl_limit <= 10:
             break
-
     while True:
-        threads_dlg = IntegerInputDialog(MAIN_ROOT, 'Threads', 'Max threads per task (1-8) [default 4]:', initialvalue=4, minvalue=1, maxvalue=8)
+        threads_dlg = IntegerInputDialog(MAIN_ROOT, 'Threads',
+                                         'Max threads per task (1-8) [default 4]:',
+                                         initialvalue=4, minvalue=1, maxvalue=8)
         threads = threads_dlg.result
         if threads is None:
             return
@@ -500,7 +505,8 @@ def build_widgets():
     btn_ru.grid(row=0, column=1, padx=(2,0), sticky='w')
 
     # Menu label
-    lbl_menu = tk.Label(MAIN_FRAME, text=MENU_TEXT[LANG]['menu'], font=('Segoe UI', 14, 'bold'))
+    lbl_menu = tk.Label(MAIN_FRAME, text=MENU_TEXT[LANG]['menu'],
+                        font=('Segoe UI', 14, 'bold'))
     lbl_menu.grid(row=1, column=0, columnspan=2, pady=(8,12), sticky='w')
 
     # Action buttons

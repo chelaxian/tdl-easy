@@ -4,28 +4,13 @@ trap [System.OperationCanceledException] {
     exit
 }
 
-# PowerShell version detection and emoji compatibility
-function Get-PSVersion {
-    try {
-        return $PSVersionTable.PSVersion.Major
-    } catch {
-        return 5  # Default to 5 if detection fails
-    }
-}
-
+# Simple colored output function
 function Write-Emoji {
     param(
         [string]$Text,
         [string]$Color = "White"
     )
-    $psVersion = Get-PSVersion
-    if ($psVersion -ge 7) {
-        Write-Host $Text -ForegroundColor $Color
-    } else {
-        # Replace emojis with ASCII equivalents for PS 5.x
-        $asciiText = $Text -replace "⚠️", "[!]" -replace "ℹ️", "[i]" -replace "🟡", "[*]" -replace "🟢", "[+]" -replace "🔴", "[x]" -replace "📜", "[f]" -replace "📂", "[d]" -replace "⏭️", "[s]" -replace "📋", "[c]" -replace "✅", "[ok]" -replace "🗑️", "[del]" -replace "🎉", "[done]"
-        Write-Host $asciiText -ForegroundColor $Color
-    }
+    Write-Host $Text -ForegroundColor $Color
 }
 
 # Set paths
@@ -46,9 +31,9 @@ if (-not (Test-Path -LiteralPath $tdlExePath)) {
 # Interactive input for Telegram URL (including topic links like https://t.me/c/2267448302/166/4857)
 do {
     Write-Host "";
-    Write-Host "╔════════════════════ TELEGRAM URL CONFIGURATION ════════════════════════════╗" -ForegroundColor DarkGray
-    Write-Host "║ Examples: https://t.me/c/12345678/123 or https://t.me/abc/123 or https://t.me/c/2267448302/166/4857" -ForegroundColor Gray
-    Write-Host "╠────────────────────────────────────────────────────────────────────────────╣" -ForegroundColor DarkGray
+    Write-Host "+============================= TELEGRAM URL CONFIGURATION ================================" -ForegroundColor DarkGray
+    Write-Host "| Examples: https://t.me/c/12345678/123 or https://t.me/abc/123 or https://t.me/c/2267448302/166/4857" -ForegroundColor Gray
+    Write-Host "+----------------------------------------------------------------------------------------+" -ForegroundColor DarkGray
     Write-Host "Copy link to Telegram post (with or without topic) and paste it here"
     $telegramUrl = Read-Host
 
@@ -71,7 +56,7 @@ do {
 
     break
 } while ($true)
-Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor DarkGray
+Write-Host "+===============================================================================+" -ForegroundColor DarkGray
 
 # Build and run command
 $command = ".\tdl.exe download --desc --dir `"$mediaDir`" --url `"$telegramUrl`""

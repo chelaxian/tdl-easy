@@ -40,6 +40,50 @@ MENU_TEXT = {
         'close_terminal': 'Close terminal',
         'hint_close': 'PowerShell windows will auto-close after execution.',
         'hint_no_close': 'PowerShell windows will stay open after execution.',
+        # Error messages
+        'error': 'Error',
+        'launch_error': 'Launch Error',
+        'invalid_url': 'Invalid URL',
+        'invalid_format': 'Invalid Format',
+        'script_not_found': 'Script not found: {script}',
+        'failed_to_copy': 'Failed to copy {file}: {error}',
+        'tdl_not_found': 'tdl.exe not found. Please install/update TDL first.',
+        'tdl_path_not_found': 'TDL path not found: {path}',
+        'media_dir_not_found': 'Media directory not found: {path}',
+        'endid_error': 'endId must be >= startId.',
+        # Dialog titles and prompts
+        'tdl_path_title': 'TDL path',
+        'tdl_path_prompt': 'Path to TDL:',
+        'media_dir_title': 'Media directory',
+        'media_dir_prompt': 'Directory to save into:',
+        'base_url_title': 'Base Telegram URL',
+        'base_url_prompt': 'Enter base link (https://t.me/c/12345678/ or https://t.me/username/):',
+        'start_index_title': 'Start Index',
+        'start_index_prompt': 'Enter startId (positive integer, default 1):',
+        'end_index_title': 'End Index',
+        'end_index_prompt': 'Enter endId (>= {start}, default {default}):',
+        'task_limit_title': 'Task Limit',
+        'task_limit_prompt': 'Max concurrent download tasks (1-10) [default 2]:',
+        'threads_title': 'Threads',
+        'threads_prompt': 'Max threads per task (1-8) [default 4]:',
+        'message_url_title': 'Message URL',
+        'message_url_prompt': 'Enter Telegram message URL (https://t.me/c/12345678/123 or https://t.me/username/123):',
+        'single_url_title': 'DOWNLOAD SINGLE FILE',
+        'single_url_prompt': 'Paste the message link (https://t.me/...):',
+        # URL validation messages
+        'url_http_required': 'URL must start with http:// or https://',
+        'url_telegram_format': 'Expected https://t.me/username/123 or https://t.me/c/12345678/123',
+        'url_base_format': 'Expected https://t.me/c/12345678/ or https://t.me/username/',
+        'url_message_format': 'Expected https://t.me/username/123 or https://t.me/c/.../123',
+        # Login info message
+        'login_info_title': 'TELEGRAM LOGIN',
+        'login_info_message': ("A console window will open. Manually choose user id,\n"
+                              "then at the prompt 'Do you want to logout existing desktop session?' answer N."),
+        # Continue task dialog
+        'continue_task_title': 'Continue Previous Task',
+        'continue_task_message': 'Found saved parameters from a previous task. Do you want to continue with these settings?',
+        'continue_task_yes': 'Yes',
+        'continue_task_no': 'No',
     },
     'RU': {
         'title': 'TDL Easy Launcher',
@@ -55,6 +99,50 @@ MENU_TEXT = {
         'close_terminal': 'Закрыть терминал',
         'hint_close': 'PowerShell-окна авто-закрываются по завершении.',
         'hint_no_close': 'PowerShell-окна остаются открытыми после выполнения.',
+        # Error messages
+        'error': 'Ошибка',
+        'launch_error': 'Ошибка запуска',
+        'invalid_url': 'Неверный URL',
+        'invalid_format': 'Неверный формат',
+        'script_not_found': 'Скрипт не найден: {script}',
+        'failed_to_copy': 'Не удалось скопировать {file}: {error}',
+        'tdl_not_found': 'tdl.exe не найден. Сначала установите/обновите TDL.',
+        'tdl_path_not_found': 'Путь к TDL не найден: {path}',
+        'media_dir_not_found': 'Папка для медиа не найдена: {path}',
+        'endid_error': 'endId должен быть >= startId.',
+        # Dialog titles and prompts
+        'tdl_path_title': 'Путь к TDL',
+        'tdl_path_prompt': 'Путь к TDL:',
+        'media_dir_title': 'Папка для медиа',
+        'media_dir_prompt': 'Папка для сохранения:',
+        'base_url_title': 'Базовый URL Telegram',
+        'base_url_prompt': 'Введите базовую ссылку (https://t.me/c/12345678/ или https://t.me/username/):',
+        'start_index_title': 'Начальный индекс',
+        'start_index_prompt': 'Введите startId (положительное число, по умолчанию 1):',
+        'end_index_title': 'Конечный индекс',
+        'end_index_prompt': 'Введите endId (>= {start}, по умолчанию {default}):',
+        'task_limit_title': 'Лимит задач',
+        'task_limit_prompt': 'Макс. одновременных задач загрузки (1-10) [по умолчанию 2]:',
+        'threads_title': 'Потоки',
+        'threads_prompt': 'Макс. потоков на задачу (1-8) [по умолчанию 4]:',
+        'message_url_title': 'URL сообщения',
+        'message_url_prompt': 'Введите URL сообщения Telegram (https://t.me/c/12345678/123 или https://t.me/username/123):',
+        'single_url_title': 'СКАЧАТЬ ОДИНОЧНЫЙ ФАЙЛ',
+        'single_url_prompt': 'Вставьте ссылку на сообщение (https://t.me/...):',
+        # URL validation messages
+        'url_http_required': 'URL должен начинаться с http:// или https://',
+        'url_telegram_format': 'Ожидается https://t.me/username/123 или https://t.me/c/12345678/123',
+        'url_base_format': 'Ожидается https://t.me/c/12345678/ или https://t.me/username/',
+        'url_message_format': 'Ожидается https://t.me/username/123 или https://t.me/c/.../123',
+        # Login info message
+        'login_info_title': 'ЛОГИН В TELEGRAM',
+        'login_info_message': ("Откроется консольное окно. Вручную выберите ID пользователя,\n"
+                              "затем на вопрос 'Do you want to logout existing desktop session?' ответьте N."),
+        # Continue task dialog
+        'continue_task_title': 'Продолжить предыдущую задачу',
+        'continue_task_message': 'Найдены сохраненные параметры предыдущей задачи. Продолжить с этими настройками?',
+        'continue_task_yes': 'Да',
+        'continue_task_no': 'Нет',
     }
 }
 
@@ -82,35 +170,9 @@ def get_launcher_dir():
     else:
         return os.path.abspath(os.path.dirname(__file__))
 
-def get_powershell_version():
-    """
-    Return major version of installed PowerShell, or 0 on error.
-    """
-    try:
-        output = subprocess.check_output(
-            ['powershell.exe', '-NoProfile', '-Command', '$PSVersionTable.PSVersion.Major'],
-            stderr=subprocess.DEVNULL,
-            text=True
-        )
-        return int(output.strip())
-    except Exception:
-        return 0
 
-def sanitize_script(script_path):
-    """
-    Remove unsupported characters (UTF-8 special symbols, emojis)
-    for PowerShell versions below 7 by keeping only ASCII.
-    Overwrites the original script file.
-    """
-    try:
-        with open(script_path, 'r', encoding='utf-8', errors='ignore') as f:
-            content = f.read()
-        ascii_only = ''.join(c for c in content if ord(c) < 128)
-        with open(script_path, 'w', encoding='utf-8') as f:
-            f.write(ascii_only)
-    except Exception as e:
-        messagebox.showerror('Error', str(e))
-    return script_path
+
+
 
 def run_powershell_script(script_path=None, extra_command=None):
     """
@@ -137,12 +199,8 @@ def run_powershell_script(script_path=None, extra_command=None):
     else:
         # running a .ps1 file
         if not os.path.isfile(script_path):
-            messagebox.showerror('Error', f'Script not found: {os.path.basename(script_path)}')
+            messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['script_not_found'].format(script=os.path.basename(script_path)))
             return
-        ps_ver = get_powershell_version()
-        # if PS version < 7, sanitize unsupported characters in place
-        if ps_ver < 7:
-            sanitize_script(script_path)
         if CLOSE_TERMINAL:
             cmd = [
                 'cmd', '/c', 'start', '', 'PowerShell.exe',
@@ -160,7 +218,7 @@ def run_powershell_script(script_path=None, extra_command=None):
     try:
         subprocess.Popen(cmd, cwd=cwd)
     except Exception as e:
-        messagebox.showerror('Launch Error', str(e))
+        messagebox.showerror(MENU_TEXT[LANG]['launch_error'], str(e))
 
 def ensure_and_copy(src_rel_name):
     """
@@ -174,7 +232,7 @@ def ensure_and_copy(src_rel_name):
     try:
         shutil.copy2(src, dest)
     except Exception as e:
-        messagebox.showerror('Error', f'Failed to copy {src_rel_name}: {e}')
+        messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['failed_to_copy'].format(file=src_rel_name, error=e))
         return None
     return dest
 
@@ -186,9 +244,71 @@ def write_state_json(path, obj):
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(obj, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        messagebox.showerror('Error', str(e))
+        messagebox.showerror(MENU_TEXT[LANG]['error'], str(e))
         return False
     return True
+
+def load_state_json(path):
+    """
+    Load JSON state file for PS scripts.
+    """
+    try:
+        if os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        messagebox.showerror(MENU_TEXT[LANG]['error'], str(e))
+    return None
+
+def has_saved_parameters():
+    """
+    Check if there are saved parameters from a previous task.
+    """
+    state_file = os.path.join(get_launcher_dir(), 'tdl_easy.json')
+    if not os.path.exists(state_file):
+        return False
+    
+    config = load_state_json(state_file)
+    if not config:
+        return False
+    
+    # Check if any required parameters are present and not empty
+    required_params = ['tdl_path', 'mediaDir', 'downloadLimit', 'threads']
+    for param in required_params:
+        if param in config and config[param] and str(config[param]).strip():
+            return True
+    
+    return False
+
+def ask_continue_task():
+    """
+    Show dialog asking if user wants to continue with saved parameters.
+    Returns True for Yes, False for No.
+    """
+    result = messagebox.askyesno(
+        MENU_TEXT[LANG]['continue_task_title'],
+        MENU_TEXT[LANG]['continue_task_message'],
+        parent=MAIN_ROOT
+    )
+    return result
+
+def clear_saved_parameters():
+    """
+    Clear saved parameters by writing empty values to the state file.
+    """
+    state_file = os.path.join(get_launcher_dir(), 'tdl_easy.json')
+    empty_state = {
+        'tdl_path': '',
+        'telegramUrl': '',
+        'telegramMessageUrl': '',
+        'mediaDir': '',
+        'startId': '',
+        'endId': '',
+        'downloadLimit': '',
+        'threads': '',
+        'maxRetries': ''
+    }
+    write_state_json(state_file, empty_state)
 
 # ==============================================================================
 # Dialog classes
@@ -259,18 +379,31 @@ def make_autoyes_wrapper(original_name, wrapper_name):
     if not original:
         return None
     wrapper_path = os.path.join(launcher_dir, wrapper_name)
+    
+    # Copy config file to script directory if it exists
+    config_source = os.path.join(launcher_dir, 'tdl_easy.json')
+    config_dest = os.path.join(os.path.dirname(original), 'tdl_easy.json')
+    
     content = f"""# Auto wrapper: answer Yes to saved parameters prompt and invoke original
 function Read-Host {{
     param($prompt)
     return 'Yes'
 }}
+
+# Copy config file to script directory if it exists
+$configSource = '{config_source.replace("'", "''")}'
+$configDest = '{config_dest.replace("'", "''")}'
+if (Test-Path $configSource) {{
+    Copy-Item -Path $configSource -Destination $configDest -Force
+}}
+
 & '.\\{original_name}'
 """
     try:
         with open(wrapper_path, 'w', encoding='utf-8') as f:
             f.write(content)
     except Exception as e:
-        messagebox.showerror('Error', str(e))
+        messagebox.showerror(MENU_TEXT[LANG]['error'], str(e))
         return None
     return wrapper_path
 
@@ -284,12 +417,11 @@ def login_telegram():
     launcher_dir = get_launcher_dir()
     tdl_exe = os.path.join(launcher_dir, 'tdl.exe')
     if not os.path.isfile(tdl_exe):
-        messagebox.showerror('Error', 'tdl.exe not found. Please install/update TDL first.')
+        messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['tdl_not_found'])
         return
     messagebox.showinfo(
-        MENU_TEXT[LANG]['telegram_login'],
-        ("A console window will open. Manually choose user id,\n"
-         "then at the prompt 'Do you want to logout existing desktop session?' answer N.")
+        MENU_TEXT[LANG]['login_info_title'],
+        MENU_TEXT[LANG]['login_info_message']
     )
     run_powershell_script(
         None,
@@ -298,18 +430,18 @@ def login_telegram():
 
 def download_single_file():
     url = simpledialog.askstring(
-        MENU_TEXT[LANG]['download_single'],
-        'Paste the message link (https://t.me/...):',
+        MENU_TEXT[LANG]['single_url_title'],
+        MENU_TEXT[LANG]['single_url_prompt'],
         parent=MAIN_ROOT
     )
     if not url:
         return
     url = url.strip()
     if not (url.startswith('http://') or url.startswith('https://')):
-        messagebox.showwarning('Invalid URL', 'URL must start with http:// or https://')
+        messagebox.showwarning(MENU_TEXT[LANG]['invalid_url'], MENU_TEXT[LANG]['url_http_required'])
         return
     if not re.match(r"^https?://t\.me/(?:(?:c/\d+/(?:\d+))(?:/\d+)?|(?:[A-Za-z0-9_]{5,32}/\d+))$", url):
-        messagebox.showwarning('Invalid URL', 'Expected https://t.me/username/123 or https://t.me/c/12345678/123')
+        messagebox.showwarning(MENU_TEXT[LANG]['invalid_url'], MENU_TEXT[LANG]['url_telegram_format'])
         return
     launcher_dir = get_launcher_dir()
     original = ensure_and_copy('tdl-easy-single.ps1')
@@ -323,33 +455,100 @@ def download_single_file():
         escaped_url = url.replace("'", "''")
         new_content = content.replace('$telegramUrl = Read-Host',
                                       f"$telegramUrl = '{escaped_url}'")
+        
+        # Copy config file to script directory if it exists
+        config_source = os.path.join(launcher_dir, 'tdl_easy.json')
+        config_dest = os.path.join(os.path.dirname(original), 'tdl_easy.json')
+        
+        # Add config copy to wrapper
+        config_copy_code = f"""
+# Copy config file to script directory if it exists
+$configSource = '{config_source.replace("'", "''")}'
+$configDest = '{config_dest.replace("'", "''")}'
+if (Test-Path $configSource) {{
+    Copy-Item -Path $configSource -Destination $configDest -Force
+}}
+"""
+        new_content = config_copy_code + new_content
+        
         with open(wrapper_path, 'w', encoding='utf-8') as f:
             f.write(new_content)
     except Exception as e:
-        messagebox.showerror('Error', str(e))
+        messagebox.showerror(MENU_TEXT[LANG]['error'], str(e))
         return
     run_powershell_script(wrapper_path)
 
 def download_range():
     launcher_dir = get_launcher_dir()
     default_tdl = launcher_dir
-    dlg = StringInputDialog(MAIN_ROOT, 'TDL path', 'Path to TDL:', initialvalue=default_tdl, width=80)
+    
+    # Check for saved parameters
+    use_saved = False
+    if has_saved_parameters():
+        if ask_continue_task():
+            use_saved = True
+            # Load saved parameters
+            state_file = os.path.join(get_launcher_dir(), 'tdl_easy.json')
+            config = load_state_json(state_file)
+            if config:
+                tdl_path = config.get('tdl_path', default_tdl)
+                media_dir = config.get('mediaDir', launcher_dir)
+                base_link = config.get('telegramUrl', '')
+                start_id = config.get('startId', 1)
+                end_id = config.get('endId', start_id + 99)
+                dl_limit = config.get('downloadLimit', 2)
+                threads = config.get('threads', 4)
+                
+                # Validate paths
+                if not os.path.exists(tdl_path):
+                    messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['tdl_path_not_found'].format(path=tdl_path))
+                    return
+                if not os.path.exists(media_dir):
+                    messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['media_dir_not_found'].format(path=media_dir))
+                    return
+                
+                # Use saved parameters and continue
+                state = {
+                    'tdl_path': tdl_path,
+                    'telegramUrl': base_link,
+                    'mediaDir': media_dir,
+                    'startId': start_id,
+                    'endId': end_id,
+                    'downloadLimit': dl_limit,
+                    'threads': threads,
+                    'maxRetries': 1
+                }
+                state_file = os.path.join(get_launcher_dir(), 'tdl_easy.json')
+                if not write_state_json(state_file, state):
+                    return
+                
+                wrapper = make_autoyes_wrapper('tdl-easy-range.ps1', 'tdl-easy-range-wrapper.ps1')
+                if not wrapper:
+                    return
+                run_powershell_script(wrapper)
+                return
+        else:
+            # User chose No - clear saved parameters
+            clear_saved_parameters()
+    
+    # If not using saved parameters, proceed with normal input
+    dlg = StringInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['tdl_path_title'], MENU_TEXT[LANG]['tdl_path_prompt'], initialvalue=default_tdl, width=80)
     tdl_path = dlg.result or default_tdl
     if not os.path.exists(tdl_path):
-        messagebox.showerror('Error', f'TDL path not found: {tdl_path}')
+        messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['tdl_path_not_found'].format(path=tdl_path))
         return
 
-    dlg2 = StringInputDialog(MAIN_ROOT, 'Media directory', 'Directory to save into:',
+    dlg2 = StringInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['media_dir_title'], MENU_TEXT[LANG]['media_dir_prompt'],
                              initialvalue=launcher_dir, width=80)
     media_dir = dlg2.result or launcher_dir
     if not os.path.exists(media_dir):
-        messagebox.showerror('Error', f'Media directory not found: {media_dir}')
+        messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['media_dir_not_found'].format(path=media_dir))
         return
 
     while True:
         base_link = simpledialog.askstring(
-            'Base Telegram URL',
-            'Enter base link (https://t.me/c/12345678/ or https://t.me/username/):',
+            MENU_TEXT[LANG]['base_url_title'],
+            MENU_TEXT[LANG]['base_url_prompt'],
             parent=MAIN_ROOT
         )
         if not base_link:
@@ -361,30 +560,29 @@ def download_range():
                 or re.match(r"^https?://t\.me/c/\d+/\d+/$", base_link)
                 or re.match(r"^https?://t\.me/[A-Za-z0-9_]{5,32}/$", base_link)):
             break
-        messagebox.showwarning('Invalid Format',
-                               'Expected https://t.me/c/12345678/ or https://t.me/username/')
+        messagebox.showwarning(MENU_TEXT[LANG]['invalid_format'], MENU_TEXT[LANG]['url_base_format'])
 
     while True:
-        start_id_dlg = IntegerInputDialog(MAIN_ROOT, 'Start Index',
-                                          'Enter startId (positive integer, default 1):',
+        start_id_dlg = IntegerInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['start_index_title'],
+                                          MENU_TEXT[LANG]['start_index_prompt'],
                                           initialvalue=1, minvalue=1)
         start_id = start_id_dlg.result
         if start_id is None:
             return
-        end_id_dlg = IntegerInputDialog(MAIN_ROOT, 'End Index',
-                                        f'Enter endId (>= {start_id}, default {start_id+99}):',
+        end_id_dlg = IntegerInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['end_index_title'],
+                                        MENU_TEXT[LANG]['end_index_prompt'].format(start=start_id, default=start_id+99),
                                         initialvalue=start_id+99, minvalue=start_id)
         end_id = end_id_dlg.result
         if end_id is None:
             return
         if end_id < start_id:
-            messagebox.showwarning('Error', 'endId must be >= startId.')
+            messagebox.showwarning(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['endid_error'])
             continue
         break
 
     while True:
-        dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, 'Task Limit',
-                                          'Max concurrent download tasks (1-10) [default 2]:',
+        dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['task_limit_title'],
+                                          MENU_TEXT[LANG]['task_limit_prompt'],
                                           initialvalue=2, minvalue=1, maxvalue=10)
         dl_limit = dl_limit_dlg.result
         if dl_limit is None:
@@ -392,8 +590,8 @@ def download_range():
         if 1 <= dl_limit <= 10:
             break
     while True:
-        threads_dlg = IntegerInputDialog(MAIN_ROOT, 'Threads',
-                                         'Max threads per task (1-8) [default 4]:',
+        threads_dlg = IntegerInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['threads_title'],
+                                         MENU_TEXT[LANG]['threads_prompt'],
                                          initialvalue=4, minvalue=1, maxvalue=8)
         threads = threads_dlg.result
         if threads is None:
@@ -411,7 +609,7 @@ def download_range():
         'threads': threads,
         'maxRetries': 1
     }
-    state_file = os.path.join(get_launcher_dir(), 'tdl_easy_runner.json')
+    state_file = os.path.join(get_launcher_dir(), 'tdl_easy.json')
     if not write_state_json(state_file, state):
         return
 
@@ -423,23 +621,70 @@ def download_range():
 def download_full_chat():
     launcher_dir = get_launcher_dir()
     default_tdl = launcher_dir
-    dlg = StringInputDialog(MAIN_ROOT, 'TDL path', 'Path to TDL:', initialvalue=default_tdl, width=80)
+    
+    # Check for saved parameters
+    use_saved = False
+    if has_saved_parameters():
+        if ask_continue_task():
+            use_saved = True
+            # Load saved parameters
+            state_file = os.path.join(get_launcher_dir(), 'tdl_easy.json')
+            config = load_state_json(state_file)
+            if config:
+                tdl_path = config.get('tdl_path', default_tdl)
+                media_dir = config.get('mediaDir', launcher_dir)
+                msg_url = config.get('telegramMessageUrl', '')
+                dl_limit = config.get('downloadLimit', 2)
+                threads = config.get('threads', 4)
+                
+                # Validate paths
+                if not os.path.exists(tdl_path):
+                    messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['tdl_path_not_found'].format(path=tdl_path))
+                    return
+                if not os.path.exists(media_dir):
+                    messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['media_dir_not_found'].format(path=media_dir))
+                    return
+                
+                # Use saved parameters and continue
+                state = {
+                    'tdl_path': tdl_path,
+                    'telegramMessageUrl': msg_url,
+                    'mediaDir': media_dir,
+                    'downloadLimit': dl_limit,
+                    'threads': threads,
+                    'maxRetries': 1
+                }
+                state_file = os.path.join(get_launcher_dir(), 'tdl_easy.json')
+                if not write_state_json(state_file, state):
+                    return
+                
+                wrapper = make_autoyes_wrapper('tdl-easy-full.ps1', 'tdl-easy-full-wrapper.ps1')
+                if not wrapper:
+                    return
+                run_powershell_script(wrapper)
+                return
+        else:
+            # User chose No - clear saved parameters
+            clear_saved_parameters()
+    
+    # If not using saved parameters, proceed with normal input
+    dlg = StringInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['tdl_path_title'], MENU_TEXT[LANG]['tdl_path_prompt'], initialvalue=default_tdl, width=80)
     tdl_path = dlg.result or default_tdl
     if not os.path.exists(tdl_path):
-        messagebox.showerror('Error', f'TDL path not found: {tdl_path}')
+        messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['tdl_path_not_found'].format(path=tdl_path))
         return
 
-    dlg2 = StringInputDialog(MAIN_ROOT, 'Media directory', 'Directory to save into:',
+    dlg2 = StringInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['media_dir_title'], MENU_TEXT[LANG]['media_dir_prompt'],
                              initialvalue=launcher_dir, width=80)
     media_dir = dlg2.result or launcher_dir
     if not os.path.exists(media_dir):
-        messagebox.showerror('Error', f'Media directory not found: {media_dir}')
+        messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['media_dir_not_found'].format(path=media_dir))
         return
 
     while True:
         msg_url = simpledialog.askstring(
-            'Message URL',
-            'Enter Telegram message URL (https://t.me/c/12345678/123 or https://t.me/username/123):',
+            MENU_TEXT[LANG]['message_url_title'],
+            MENU_TEXT[LANG]['message_url_prompt'],
             parent=MAIN_ROOT
         )
         if not msg_url:
@@ -449,12 +694,11 @@ def download_full_chat():
                 or re.match(r"^https?://t\.me/c/\d+/\d+/\d+$", msg_url)
                 or re.match(r"^https?://t\.me/[A-Za-z0-9_]{5,32}/\d+$", msg_url)):
             break
-        messagebox.showwarning('Invalid Format',
-                               'Expected https://t.me/username/123 or https://t.me/c/.../123')
+        messagebox.showwarning(MENU_TEXT[LANG]['invalid_format'], MENU_TEXT[LANG]['url_message_format'])
 
     while True:
-        dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, 'Task Limit',
-                                          'Max concurrent download tasks (1-10) [default 2]:',
+        dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['task_limit_title'],
+                                          MENU_TEXT[LANG]['task_limit_prompt'],
                                           initialvalue=2, minvalue=1, maxvalue=10)
         dl_limit = dl_limit_dlg.result
         if dl_limit is None:
@@ -462,8 +706,8 @@ def download_full_chat():
         if 1 <= dl_limit <= 10:
             break
     while True:
-        threads_dlg = IntegerInputDialog(MAIN_ROOT, 'Threads',
-                                          'Max threads per task (1-8) [default 4]:',
+        threads_dlg = IntegerInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['threads_title'],
+                                          MENU_TEXT[LANG]['threads_prompt'],
                                           initialvalue=4, minvalue=1, maxvalue=8)
         threads = threads_dlg.result
         if threads is None:
@@ -479,7 +723,7 @@ def download_full_chat():
         'threads': threads,
         'maxRetries': 1
     }
-    state_file = os.path.join(get_launcher_dir(), 'tdl_easy_runner.json')
+    state_file = os.path.join(get_launcher_dir(), 'tdl_easy.json')
     if not write_state_json(state_file, state):
         return
 

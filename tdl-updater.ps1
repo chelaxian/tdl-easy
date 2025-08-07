@@ -1,5 +1,29 @@
+# PowerShell version detection and emoji compatibility
+function Get-PSVersion {
+    try {
+        return $PSVersionTable.PSVersion.Major
+    } catch {
+        return 5  # Default to 5 if detection fails
+    }
+}
+
+function Write-Emoji {
+    param(
+        [string]$Text,
+        [string]$Color = "White"
+    )
+    $psVersion = Get-PSVersion
+    if ($psVersion -ge 7) {
+        Write-Host $Text -ForegroundColor $Color
+    } else {
+        # Replace emojis with ASCII equivalents for PS 5.x
+        $asciiText = $Text -replace "⚠️", "[!]" -replace "ℹ️", "[i]" -replace "🟡", "[*]" -replace "🟢", "[+]" -replace "🔴", "[x]" -replace "📜", "[f]" -replace "📂", "[d]" -replace "⏭️", "[s]" -replace "📋", "[c]" -replace "✅", "[ok]" -replace "🗑️", "[del]" -replace "🎉", "[done]"
+        Write-Host $asciiText -ForegroundColor $Color
+    }
+}
+
 # Parameters
-$currentVersion = "v0.19.0"  # Current version of tdl, to be updated if a newer version is found
+$currentVersion = "v0.19.1"  # Current version of tdl, to be updated if a newer version is found
 $tdlPath = $PSScriptRoot     # Path where the script is running, used as the target for update
 $latestReleaseUrl = "https://github.com/iyear/tdl/releases/latest"
 $downloadBaseUrl = "https://github.com/iyear/tdl/releases/download/"
@@ -14,7 +38,7 @@ function Get-LatestVersion {
         $latestVersion = ($response.BaseResponse.ResponseUri -split '/' | Select-Object -Last 1)
         return $latestVersion  # Includes leading 'v'
     } catch {
-        Write-Error "❌ Failed to fetch latest version info: $_"
+        Write-Emoji "[x] Failed to fetch latest version info: $_" "Red"
         return $null
     }
 }
@@ -24,7 +48,7 @@ function Update-Tdl {
     param ([string]$newVersion)
 
     if (-not $newVersion) {
-        Write-Error "❌ No version provided to update."
+        Write-Emoji "[x] No version provided to update." "Red"
         return $false
     }
 
@@ -33,42 +57,42 @@ function Update-Tdl {
     $tempExtract = Join-Path $tdlPath 'tdl_update_temp'
 
     try {
-        Write-Host "⬇️ Downloading update for version $newVersion..."
+        Write-Emoji "[*] Downloading update for version $newVersion..." "Yellow"
         Invoke-WebRequest -Uri $downloadUrl -OutFile $tempZip -ErrorAction Stop
-        Write-Host "✅ Downloaded update archive to $tempZip"
+        Write-Emoji "[ok] Downloaded update archive to $tempZip" "Green"
 
-        Write-Host "📦 Extracting update..."
+        Write-Emoji "[*] Extracting update..." "Yellow"
         if (Test-Path $tempExtract) { Remove-Item -Path $tempExtract -Recurse -Force }
         Expand-Archive -Path $tempZip -DestinationPath $tempExtract -Force
-        Write-Host "✅ Extracted update to temporary folder"
+        Write-Emoji "[ok] Extracted update to temporary folder" "Green"
 
-        Write-Host "🛠 Replacing files in current directory..."
+        Write-Emoji "[*] Replacing files in current directory..." "Yellow"
         Get-ChildItem -Path $tempExtract -Recurse | Copy-Item -Destination $tdlPath -Force -Recurse
-        Write-Host "✅ Replacement complete"
+        Write-Emoji "[ok] Replacement complete" "Green"
 
-        Write-Host "🧹 Cleaning up temporary files..."
+        Write-Emoji "[*] Cleaning up temporary files..." "Yellow"
         Remove-Item -Path $tempZip -Force
         Remove-Item -Path $tempExtract -Recurse -Force
-        Write-Host "✅ Cleanup done"
+        Write-Emoji "[ok] Cleanup done" "Green"
 
-        Write-Host "✅ Update to version $newVersion completed successfully!"
+        Write-Emoji "[ok] Update to version $newVersion completed successfully!" "Green"
 
         # Auto-open folder with updated binary
-        Write-Host "📂 Opening updated folder: $tdlPath" -ForegroundColor Cyan
+        Write-Emoji "[d] Opening updated folder: $tdlPath" "Cyan"
         try {
             Start-Process explorer.exe -ArgumentList $tdlPath
         } catch {
-            Write-Host "⚠️ Failed to open folder: $_" -ForegroundColor Yellow
+            Write-Emoji "[!] Failed to open folder: $_" "Yellow"
         }
 
         # Update the version in the script file (replace only the value inside quotes)
         $pattern = '(\$currentVersion\s*=\s*")v[\d\.]+(")'
         $replacement = '$1' + $newVersion + '$2'
-        (Get-Content $PSCommandPath) -replace $pattern, $replacement | Set-Content $PSCommandPath
+        (Get-Content $PSCommandPath -Encoding UTF8) -replace $pattern, $replacement | Set-Content $PSCommandPath -Encoding UTF8
 
         return $true
     } catch {
-        Write-Error "❌ Update failed: $_"
+        Write-Emoji "[x] Update failed: $_" "Red"
         # cleanup partial if exists
         if (Test-Path $tempZip) { Remove-Item -Path $tempZip -Force }
         if (Test-Path $tempExtract) { Remove-Item -Path $tempExtract -Recurse -Force }
@@ -83,7 +107,7 @@ Write-Host "Latest version: $latestVersion"
 
 $tdlMissing = -not (Test-Path $tdlExe)
 if ($tdlMissing) {
-    Write-Host "🟡 tdl.exe not found in $tdlPath. Will download/install latest version."
+    Write-Emoji "[*] tdl.exe not found in $tdlPath. Will download/install latest version." "Yellow"
 }
 
 $needUpdate = $false
@@ -98,38 +122,38 @@ if ($latestVersion) {
     }
 
     if (&$versionCompare $currentVersion $latestVersion) {
-        Write-Host "🟡 A newer version ($latestVersion) is available. Updating now..."
+        Write-Emoji "[*] A newer version ($latestVersion) is available. Updating now..." "Yellow"
         $needUpdate = $true
     } elseif ($tdlMissing) {
-        Write-Host "🟡 Binary missing but version marker is current. Proceeding to download $latestVersion..."
+        Write-Emoji "[*] Binary missing but version marker is current. Proceeding to download $latestVersion..." "Yellow"
         $needUpdate = $true
     } else {
-        Write-Host "✅ Version is up-to-date and tdl.exe exists."
+        Write-Emoji "[ok] Version is up-to-date and tdl.exe exists." "Green"
     }
 } else {
     if ($tdlMissing) {
-        Write-Host "🟡 Unable to determine latest version from GitHub, but tdl.exe is missing - trying to download current version listed ($currentVersion)..."
+        Write-Emoji "[*] Unable to determine latest version from GitHub, but tdl.exe is missing - trying to download current version listed ($currentVersion)..." "Yellow"
         $needUpdate = $true
     } else {
-        Write-Host "ℹ️ Unable to retrieve latest version information, but tdl.exe is present. Skipping update."
+        Write-Emoji "[i] Unable to retrieve latest version information, but tdl.exe is present. Skipping update." "Cyan"
     }
 }
 
 if ($needUpdate -and $latestVersion) {
     $success = Update-Tdl -newVersion $latestVersion
     if (-not $success) {
-        Write-Error "❌ Update failed."
+        Write-Emoji "[x] Update failed." "Red"
     } else {
-        Write-Host "✅ Update process finished."
+        Write-Emoji "[ok] Update process finished." "Green"
     }
 } elseif ($needUpdate -and -not $latestVersion) {
     # Try fallback to currentVersion if latest unknown
     $success = Update-Tdl -newVersion $currentVersion
     if (-not $success) {
-        Write-Error "❌ Update from fallback version failed."
+        Write-Emoji "[x] Update from fallback version failed." "Red"
     } else {
-        Write-Host "✅ Fallback update process finished."
+        Write-Emoji "[ok] Fallback update process finished." "Green"
     }
 }
 
-Write-Host "✅ Update check completed."
+Write-Emoji "[ok] Update check completed." "Green"

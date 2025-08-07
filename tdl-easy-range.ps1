@@ -363,10 +363,15 @@ if (Test-Path $errorFile) {
 # Extract fully downloaded indexes from mediaDir
 $downloadedIds = @()
 if (Test-Path $mediaDir) {
-    $files = Get-ChildItem -Path $mediaDir -File
+    $files = Get-ChildItem -Path $mediaDir -File -Recurse
     foreach ($file in $files) {
-        if ($file.Name -match "^${channelId}_(\d+)_" -and $file.Length -gt 0 -and $file.Extension -ne ".tmp") {
-            $downloadedIds += [int]$Matches[1]
+        # Look for files that contain message ID in their name (e.g., *_9341_*)
+        if ($file.Name -match "_(\d+)_" -and $file.Length -gt 0 -and $file.Extension -ne ".tmp") {
+            $messageId = [int]$Matches[1]
+            # Check if this message ID is within our target range
+            if ($messageId -ge $startId -and $messageId -le $endId) {
+                $downloadedIds += $messageId
+            }
         }
     }
     Write-Emoji "[d] Found $($downloadedIds.Count) fully downloaded indexes from files in $mediaDir" "Cyan"
@@ -417,27 +422,61 @@ while ($retryCount -lt $maxRetries) {
         $command | Out-File -FilePath $logFile -Append
 
         try {
-            $output = Invoke-Expression $command 2>&1 | ForEach-Object { Write-Host $_ -ForegroundColor White; $_ }
+            # Create a process to handle interactive prompts automatically
+            $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+            $processInfo.FileName = ".\tdl.exe"
+            $processInfo.Arguments = "download --desc --dir `"$mediaDir`" $($urlArgs -join ' ') -l $downloadLimit -t $threads"
+            $processInfo.WorkingDirectory = $tdl_path
+            $processInfo.UseShellExecute = $false
+            $processInfo.RedirectStandardInput = $true
+            $processInfo.RedirectStandardOutput = $true
+            $processInfo.RedirectStandardError = $true
+            $processInfo.CreateNoWindow = $false
             
-            # Timeout monitoring
-            $processRunning = $true
-            $startTime = Get-Date
-            while ($processRunning -and ((Get-Date) - $startTime).TotalSeconds -lt $timeoutSeconds) {
-                $process = Get-Process | Where-Object { $_.Path -eq "$tdl_path\tdl.exe" -and -not $_.HasExited }
-                if (-not $process) { $processRunning = $false }
-                Start-Sleep -Seconds 1
-            }
-            if ($processRunning) {
-                $process | Stop-Process -Force
+            $process = New-Object System.Diagnostics.Process
+            $process.StartInfo = $processInfo
+            $process.Start() | Out-Null
+            
+            # Send "y" to any interactive prompts
+            $process.StandardInput.WriteLine("y")
+            $process.StandardInput.WriteLine("y")
+            $process.StandardInput.WriteLine("y")
+            $process.StandardInput.WriteLine("y")
+            $process.StandardInput.WriteLine("y")
+            $process.StandardInput.WriteLine("y")
+            $process.StandardInput.WriteLine("y")
+            $process.StandardInput.WriteLine("y")
+            $process.StandardInput.WriteLine("y")
+            $process.StandardInput.WriteLine("y")
+            $process.StandardInput.Close()
+            
+            # Read output
+            $output = $process.StandardOutput.ReadToEnd()
+            $errorOutput = $process.StandardError.ReadToEnd()
+            
+            # Wait for process to complete
+            $process.WaitForExit($timeoutSeconds * 1000)
+            
+            if (-not $process.HasExited) {
+                $process.Kill()
                 Write-Emoji "[x] Timeout reached for batch after $timeoutSeconds seconds" "Red"
                 throw "Timeout"
             }
             
-            $output | Out-File -FilePath $logFile -Append
+            # Display output
+            if ($output) { Write-Host $output -ForegroundColor White }
+            if ($errorOutput) { Write-Host $errorOutput -ForegroundColor Red }
+            
+            $fullOutput | Out-File -FilePath $logFile -Append
 
             # Check for downloaded files for each ID in batch
             foreach ($id in $batchIds) {
-                $downloadedFile = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_${id}_" -and $_.Length -gt 0 -and $_.Extension -ne ".tmp" } | Select-Object -First 1
+                # Look for files that contain the message ID in their name
+                # Pattern: *_messageId_* (e.g., *_9341_*)
+                $downloadedFile = Get-ChildItem -Path $mediaDir -File -Recurse | Where-Object { 
+                    $_.Name -match "_${id}_" -and $_.Length -gt 0 -and $_.Extension -ne ".tmp" 
+                } | Select-Object -First 1
+                
                 if ($downloadedFile) {
                     Write-Emoji "[ok] Downloaded $($downloadedFile.Name) for index $id" "Green"
                     Save-ProcessedId $id
@@ -485,7 +524,7 @@ while ($retryCount -lt $maxRetries) {
 }
 
 # Clean up incomplete files
-$incompleteFiles = Get-ChildItem -Path $mediaDir -File | Where-Object { $_.Name -match "^${channelId}_\d+_.*" -and $_.Length -eq 0 }
+$incompleteFiles = Get-ChildItem -Path $mediaDir -File -Recurse | Where-Object { $_.Name -match "_\d+_.*" -and $_.Length -eq 0 }
 foreach ($incompleteFile in $incompleteFiles) {
     Remove-Item -Path $incompleteFile.FullName -Force
     Write-Emoji "[x] Removed incomplete file $($incompleteFile.Name)" "Red"

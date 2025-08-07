@@ -34,11 +34,12 @@ pyinstaller --onefile --noconsole `
   --hidden-import=tkinter `
   --hidden-import=tkinter.simpledialog `
   --hidden-import=tkinter.messagebox `
+  --hidden-import=tkinter.filedialog `
   --add-data "tdl-updater.ps1;." `
   --add-data "tdl-easy-single.ps1;." `
   --add-data "tdl-easy-range.ps1;." `
   --add-data "tdl-easy-full.ps1;." `
-  tdl_gui.py
+  GUI/tdl_gui.py
 ```
 ---
 

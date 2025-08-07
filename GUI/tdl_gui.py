@@ -18,6 +18,9 @@ MAIN_FRAME = None
 # current UI language ('EN' or 'RU')
 LANG = 'EN'
 
+# whether to close terminals automatically after scripts finish
+CLOSE_TERMINAL = True
+
 # widget references for easy text updates
 WIDGETS = {}
 
@@ -32,9 +35,11 @@ MENU_TEXT = {
         'download_range': 'DOWNLOAD POSTS RANGE',
         'download_full': 'DOWNLOAD FULL CHAT',
         'exit': 'EXIT',
-        'hint': 'PowerShell windows will auto-close after execution.',
         'button_en': 'EN',
         'button_ru': 'RU',
+        'close_terminal': 'Close terminal',
+        'hint_close': 'PowerShell windows will auto-close after execution.',
+        'hint_no_close': 'PowerShell windows will stay open after execution.',
     },
     'RU': {
         'title': 'TDL Easy Launcher',
@@ -45,9 +50,11 @@ MENU_TEXT = {
         'download_range': 'СКАЧАТЬ ДИАПАЗОН ПОСТОВ',
         'download_full': 'СКАЧАТЬ ВСЁ ИЗ ЧАТА',
         'exit': 'ВЫХОД',
-        'hint': 'PowerShell-окна авто-закрываются по завершении.',
         'button_en': 'EN',
         'button_ru': 'RU',
+        'close_terminal': 'Закрыть терминал',
+        'hint_close': 'PowerShell-окна авто-закрываются по завершении.',
+        'hint_no_close': 'PowerShell-окна остаются открытыми после выполнения.',
     }
 }
 
@@ -93,47 +100,62 @@ def sanitize_script(script_path):
     """
     Remove unsupported characters (UTF-8 special symbols, emojis)
     for PowerShell versions below 7 by keeping only ASCII.
+    Overwrites the original script file.
     """
     try:
         with open(script_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
-        sanitized = ''.join(c for c in content if ord(c) < 128)
-        dir_, name = os.path.split(script_path)
-        sanitized_name = name.replace('.ps1', '-sanitized.ps1')
-        sanitized_path = os.path.join(dir_, sanitized_name)
-        with open(sanitized_path, 'w', encoding='utf-8') as f:
-            f.write(sanitized)
-        return sanitized_path
+        ascii_only = ''.join(c for c in content if ord(c) < 128)
+        with open(script_path, 'w', encoding='utf-8') as f:
+            f.write(ascii_only)
     except Exception as e:
         messagebox.showerror('Error', str(e))
-        return script_path
+    return script_path
 
 def run_powershell_script(script_path=None, extra_command=None):
     """
     Launch a PowerShell script or command in its own window and
-    close the window automatically when done.
+    optionally close the window automatically when done.
     """
-    # if only a command is provided (no script file)
+    global CLOSE_TERMINAL
     if extra_command and not script_path:
-        cmd = [
-            'cmd', '/c', 'start', '', 'PowerShell.exe',
-            '-ExecutionPolicy', 'Bypass',
-            '-Command', f"{extra_command}; exit"
-        ]
+        # running inline command
+        if CLOSE_TERMINAL:
+            cmd = [
+                'cmd', '/c', 'start', '', 'PowerShell.exe',
+                '-ExecutionPolicy', 'Bypass',
+                '-Command', f"{extra_command}; exit"
+            ]
+        else:
+            cmd = [
+                'cmd', '/c', 'start', '', 'PowerShell.exe',
+                '-NoExit',
+                '-ExecutionPolicy', 'Bypass',
+                '-Command', extra_command
+            ]
         cwd = get_launcher_dir()
     else:
-        # script_path must exist
+        # running a .ps1 file
         if not os.path.isfile(script_path):
             messagebox.showerror('Error', f'Script not found: {os.path.basename(script_path)}')
             return
         ps_ver = get_powershell_version()
-        if ps_ver < 7 and extra_command is None:
-            script_path = sanitize_script(script_path)
-        cmd = [
-            'cmd', '/c', 'start', '', 'PowerShell.exe',
-            '-ExecutionPolicy', 'Bypass',
-            '-File', script_path
-        ]
+        # if PS version < 7, sanitize unsupported characters in place
+        if ps_ver < 7:
+            sanitize_script(script_path)
+        if CLOSE_TERMINAL:
+            cmd = [
+                'cmd', '/c', 'start', '', 'PowerShell.exe',
+                '-ExecutionPolicy', 'Bypass',
+                '-File', script_path
+            ]
+        else:
+            cmd = [
+                'cmd', '/c', 'start', '', 'PowerShell.exe',
+                '-NoExit',
+                '-ExecutionPolicy', 'Bypass',
+                '-File', script_path
+            ]
         cwd = os.path.dirname(script_path)
     try:
         subprocess.Popen(cmd, cwd=cwd)
@@ -142,11 +164,13 @@ def run_powershell_script(script_path=None, extra_command=None):
 
 def ensure_and_copy(src_rel_name):
     """
-    Copy embedded resource script to launcher directory.
+    Copy embedded resource script to launcher directory if not already present.
     """
     launcher_dir = get_launcher_dir()
-    src = resource_path(src_rel_name)
     dest = os.path.join(launcher_dir, src_rel_name)
+    if os.path.isfile(dest):
+        return dest
+    src = resource_path(src_rel_name)
     try:
         shutil.copy2(src, dest)
     except Exception as e:
@@ -230,9 +254,6 @@ class IntegerInputDialog(simpledialog.Dialog):
 # ==============================================================================
 
 def make_autoyes_wrapper(original_name, wrapper_name):
-    """
-    Create wrapper answering 'Yes' automatically to Read-Host prompts.
-    """
     launcher_dir = get_launcher_dir()
     original = ensure_and_copy(original_name)
     if not original:
@@ -254,18 +275,12 @@ function Read-Host {{
     return wrapper_path
 
 def install_update_tdl():
-    """
-    Handle INSTALL/UPDATE TDL action.
-    """
     updater = ensure_and_copy('tdl-updater.ps1')
     if not updater:
         return
     run_powershell_script(updater)
 
 def login_telegram():
-    """
-    Handle TELEGRAM LOGIN action.
-    """
     launcher_dir = get_launcher_dir()
     tdl_exe = os.path.join(launcher_dir, 'tdl.exe')
     if not os.path.isfile(tdl_exe):
@@ -282,9 +297,6 @@ def login_telegram():
     )
 
 def download_single_file():
-    """
-    Handle DOWNLOAD SINGLE FILE action.
-    """
     url = simpledialog.askstring(
         MENU_TEXT[LANG]['download_single'],
         'Paste the message link (https://t.me/...):',
@@ -319,9 +331,6 @@ def download_single_file():
     run_powershell_script(wrapper_path)
 
 def download_range():
-    """
-    Handle DOWNLOAD POSTS RANGE action.
-    """
     launcher_dir = get_launcher_dir()
     default_tdl = launcher_dir
     dlg = StringInputDialog(MAIN_ROOT, 'TDL path', 'Path to TDL:', initialvalue=default_tdl, width=80)
@@ -412,9 +421,6 @@ def download_range():
     run_powershell_script(wrapper)
 
 def download_full_chat():
-    """
-    Handle DOWNLOAD FULL CHAT action.
-    """
     launcher_dir = get_launcher_dir()
     default_tdl = launcher_dir
     dlg = StringInputDialog(MAIN_ROOT, 'TDL path', 'Path to TDL:', initialvalue=default_tdl, width=80)
@@ -457,8 +463,8 @@ def download_full_chat():
             break
     while True:
         threads_dlg = IntegerInputDialog(MAIN_ROOT, 'Threads',
-                                         'Max threads per task (1-8) [default 4]:',
-                                         initialvalue=4, minvalue=1, maxvalue=8)
+                                          'Max threads per task (1-8) [default 4]:',
+                                          initialvalue=4, minvalue=1, maxvalue=8)
         threads = threads_dlg.result
         if threads is None:
             return
@@ -486,61 +492,75 @@ def download_full_chat():
 # UI construction and language switching
 # ==============================================================================
 
+def toggle_close_terminal():
+    """
+    Callback when checkbox toggled: update global and hint text.
+    """
+    global CLOSE_TERMINAL
+    CLOSE_TERMINAL = WIDGETS['close_var'].get()
+    hint_text = MENU_TEXT[LANG]['hint_close'] if CLOSE_TERMINAL else MENU_TEXT[LANG]['hint_no_close']
+    WIDGETS['hint'].config(text=hint_text)
+
 def build_widgets():
     """
     Create and grid all widgets inside MAIN_FRAME.
     """
     global WIDGETS
 
-    # clear existing children
     for w in MAIN_FRAME.winfo_children():
         w.destroy()
 
-    # EN/RU toggle buttons side by side
     btn_en = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['button_en'], width=4,
                        command=lambda: switch_language('EN'))
     btn_ru = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['button_ru'], width=4,
                        command=lambda: switch_language('RU'))
     btn_en.grid(row=0, column=0, padx=(0,2), sticky='w')
-    btn_ru.grid(row=0, column=1, padx=(2,0), sticky='w')
+    btn_ru.grid(row=0, column=1, padx=(2,10), sticky='w')
 
-    # Menu label
+    close_var = tk.BooleanVar(value=CLOSE_TERMINAL)
+    chk_close = tk.Checkbutton(MAIN_FRAME,
+                               text=MENU_TEXT[LANG]['close_terminal'],
+                               variable=close_var,
+                               command=toggle_close_terminal)
+    chk_close.grid(row=0, column=2, sticky='w')
+
     lbl_menu = tk.Label(MAIN_FRAME, text=MENU_TEXT[LANG]['menu'],
                         font=('Segoe UI', 14, 'bold'))
-    lbl_menu.grid(row=1, column=0, columnspan=2, pady=(8,12), sticky='w')
+    lbl_menu.grid(row=1, column=0, columnspan=3, pady=(8,12), sticky='w')
 
-    # Action buttons
     btn_update = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['install_update'], width=35,
                            command=install_update_tdl)
-    btn_update.grid(row=2, column=0, columnspan=2, pady=4)
+    btn_update.grid(row=2, column=0, columnspan=3, pady=4)
 
     btn_login = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['telegram_login'], width=35,
                           command=login_telegram)
-    btn_login.grid(row=3, column=0, columnspan=2, pady=4)
+    btn_login.grid(row=3, column=0, columnspan=3, pady=4)
 
     btn_single = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['download_single'], width=35,
                            command=download_single_file)
-    btn_single.grid(row=4, column=0, columnspan=2, pady=4)
+    btn_single.grid(row=4, column=0, columnspan=3, pady=4)
 
     btn_range = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['download_range'], width=35,
                           command=download_range)
-    btn_range.grid(row=5, column=0, columnspan=2, pady=4)
+    btn_range.grid(row=5, column=0, columnspan=3, pady=4)
 
     btn_full = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['download_full'], width=35,
                          command=download_full_chat)
-    btn_full.grid(row=6, column=0, columnspan=2, pady=4)
+    btn_full.grid(row=6, column=0, columnspan=3, pady=4)
 
     btn_exit = tk.Button(MAIN_FRAME, text=MENU_TEXT[LANG]['exit'], width=35,
                          command=MAIN_ROOT.destroy)
-    btn_exit.grid(row=7, column=0, columnspan=2, pady=(12,4))
+    btn_exit.grid(row=7, column=0, columnspan=3, pady=(12,4))
 
-    hint = tk.Label(MAIN_FRAME, text=MENU_TEXT[LANG]['hint'], font=('Segoe UI', 8), fg='gray')
-    hint.grid(row=8, column=0, columnspan=2, pady=(8,0))
+    hint_text = MENU_TEXT[LANG]['hint_close'] if CLOSE_TERMINAL else MENU_TEXT[LANG]['hint_no_close']
+    hint = tk.Label(MAIN_FRAME, text=hint_text, font=('Segoe UI', 8), fg='gray')
+    hint.grid(row=8, column=0, columnspan=3, pady=(8,0))
 
-    # store references
     WIDGETS.update({
         'btn_en': btn_en,
         'btn_ru': btn_ru,
+        'chk_close': chk_close,
+        'close_var': close_var,
         'lbl_menu': lbl_menu,
         'btn_update': btn_update,
         'btn_login': btn_login,
@@ -553,7 +573,7 @@ def build_widgets():
 
 def switch_language(lang_code):
     """
-    Change LANG and update all widget texts in-place.
+    Change LANG and rebuild all widget texts.
     """
     global LANG
     if LANG == lang_code:

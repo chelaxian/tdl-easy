@@ -25,6 +25,9 @@ If you want to compile GUI version from source copy file `GUI\tdl_gui.py` to oth
 ```python
 pip install --upgrade pyinstaller
 pyinstaller --onefile --noconsole `
+  --hidden-import=tkinter `
+  --hidden-import=tkinter.simpledialog `
+  --hidden-import=tkinter.messagebox `
   --add-data "tdl-updater.ps1;." `
   --add-data "tdl-easy-single.ps1;." `
   --add-data "tdl-easy-range.ps1;." `

@@ -27,7 +27,7 @@ or if you want use powershell in console:
    
 ## Compile GUI
 
-If you want to compile GUI version from source copy file `GUI\tdl_gui.py` to other `ps1` scripts and use command:
+If you want to compile GUI version from source copy file `GUI\tdl_gui.py` to other `ps1` scripts and use powershell command:
 ```python
 pip install --upgrade pyinstaller
 pyinstaller --onefile --noconsole `

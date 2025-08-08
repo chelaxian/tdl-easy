@@ -74,7 +74,8 @@ echo [8/10] Set default proxy credentials for WebRequests (session test)
 echo [9/10] Connectivity tests (TLS)
 %PS% -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{Invoke-RestMethod 'https://api.github.com' -Headers @{ 'User-Agent'='tdl-easy-fix' } -TimeoutSec 15|Out-Null; 'api.github.com: OK'}catch{'api.github.com: FAIL - ' + $_.Exception.Message}"
 %PS% -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{Invoke-WebRequest 'https://raw.githubusercontent.com/github/gitignore/main/README.md' -UseBasicParsing -TimeoutSec 15|Out-Null; 'raw.githubusercontent.com: OK'}catch{'raw.githubusercontent.com: FAIL - ' + $_.Exception.Message}"
-%PS% -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{ $req=[System.Net.HttpWebRequest]::Create('https://objects.githubusercontent.com'); $req.Method='HEAD'; $req.Timeout=15000; $null=$req.GetResponse(); 'objects.githubusercontent.com: OK' }catch{ if ($_.Exception.Response -ne $null) { 'objects.githubusercontent.com: OK (HTTP ' + [int]$_.Exception.Response.StatusCode + ')' } else { 'objects.githubusercontent.com: FAIL - ' + $_.Exception.Message } }"
+%PS% -Command "$ErrorActionPreference='SilentlyContinue'; try{ $tcp=New-Object System.Net.Sockets.TcpClient('objects.githubusercontent.com',443); $ssl=New-Object System.Net.Security.SslStream($tcp.GetStream(),$false); $ssl.AuthenticateAsClient('objects.githubusercontent.com'); if($ssl.IsAuthenticated){'objects.githubusercontent.com: OK (TLS handshake)'} else {'objects.githubusercontent.com: FAIL'}; $ssl.Dispose(); $tcp.Close() } catch { 'objects.githubusercontent.com: FAIL - ' + $_.Exception.Message }"
+
 
 :: 10) Root CA update — last, simplified, never breaks the script
 echo [10/10] Update root certificates (best-effort, safe)

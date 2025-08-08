@@ -70,11 +70,11 @@ w32tm /resync >nul 2>&1
 echo [8/10] Set default proxy credentials for WebRequests (session test)
 %PS% -Command "[System.Net.WebRequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials"
 
-:: 9) Connectivity tests
+:: 9) Connectivity tests (use -UseBasicParsing where required; treat 404 on objects as OK)
 echo [9/10] Connectivity tests (TLS)
 %PS% -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{Invoke-RestMethod 'https://api.github.com' -Headers @{ 'User-Agent'='tdl-easy-fix' } -TimeoutSec 15|Out-Null; 'api.github.com: OK'}catch{'api.github.com: FAIL - ' + $_.Exception.Message}"
-%PS% -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{Invoke-WebRequest  'https://raw.githubusercontent.com' -Headers @{ 'User-Agent'='tdl-easy-fix' } -TimeoutSec 15|Out-Null; 'raw.githubusercontent.com: OK'}catch{'raw.githubusercontent.com: FAIL - ' + $_.Exception.Message}"
-%PS% -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{Invoke-WebRequest  'https://objects.githubusercontent.com' -Headers @{ 'User-Agent'='tdl-easy-fix' } -TimeoutSec 15|Out-Null; 'objects.githubusercontent.com: OK'}catch{'objects.githubusercontent.com: FAIL - ' + $_.Exception.Message}"
+%PS% -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{Invoke-WebRequest 'https://raw.githubusercontent.com/github/gitignore/main/README.md' -UseBasicParsing -TimeoutSec 15|Out-Null; 'raw.githubusercontent.com: OK'}catch{'raw.githubusercontent.com: FAIL - ' + $_.Exception.Message}"
+%PS% -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{ $req=[System.Net.HttpWebRequest]::Create('https://objects.githubusercontent.com'); $req.Method='HEAD'; $req.Timeout=15000; $null=$req.GetResponse(); 'objects.githubusercontent.com: OK' }catch{ if ($_.Exception.Response -ne $null) { 'objects.githubusercontent.com: OK (HTTP ' + [int]$_.Exception.Response.StatusCode + ')' } else { 'objects.githubusercontent.com: FAIL - ' + $_.Exception.Message } }"
 
 :: 10) Root CA update — last, simplified, never breaks the script
 echo [10/10] Update root certificates (best-effort, safe)

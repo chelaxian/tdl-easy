@@ -8,7 +8,8 @@ Portable GUI and PowerShell scripts to simplify downloading Telegram media from 
 
 0. Just go to [Release page](https://github.com/chelaxian/tdl-easy/releases/latest) and downlod and run `tdl_gui.exe`
    (close and reopen Telegram client after finish downloading with tdl)  
-<img width="436" height="532" alt="image" src="https://github.com/user-attachments/assets/a08917ec-52c8-4842-b0d3-d8e3fce616fd" />
+![photo_2025-08-08_13-37-51](https://github.com/user-attachments/assets/660e0bef-4e0f-4597-bab5-8737b0dbb0c0)
+
 ---
 
 ## FIXING ERRORS 

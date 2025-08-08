@@ -19,8 +19,15 @@ or if you want use powershell in console:
 3. locate in powershell via `cd C:\PATH\TO\YOUR\FOLDER` command to scripts directory  and run `.\tdl-updater.ps1` to download/update `tdl.exe`
 4. run `.\tdl.exe login` and choose your Telegram ID and say `No` when asking about logout.
 5. run `.\tdl-easy-range.ps1` or `.\tdl-easy-full.ps1` or `.\tdl-easy-single.ps1` and follow interactive wizard to set up and start downloading.
+   
+---
+
+## FIXING ERRORS 
+
+If you have powershell errors while running GUI - run [this BAT-file](https://github.com/chelaxian/tdl-easy/blob/main/fix-powershell-errors.bat) as Administrator and after that retry running GUI again
 
 ---
+
 ## Source code usage:
 
 <details>

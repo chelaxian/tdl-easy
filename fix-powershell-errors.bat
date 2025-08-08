@@ -8,15 +8,27 @@ if %errorlevel% neq 0 (
   exit /b
 )
 
+set "SCRIPT_DIR=%~dp0"
+set "DL_DIR=%USERPROFILE%\Downloads"
+set "TMP_SST=%TEMP%\roots.sst"
+set "PS=PowerShell -NoProfile -ExecutionPolicy Bypass"
+
+del /f /q "%cd%\RemoteSigned" 2>nul
+
 echo.
-echo ================= TLS / PowerShell Fix =================
+echo ================= tdl-easy Universal Environment Fix (Win10/11) =================
 
-:: 1) Set PowerShell execution policy for CurrentUser -> RemoteSigned
-echo [1/5] Setting PowerShell ExecutionPolicy for CurrentUser -> RemoteSigned
-powershell -NoProfile -ExecutionPolicy Bypass -Command "try{Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force -ErrorAction Stop}catch{}"
+for /f "tokens=2 delims=[]" %%a in ('ver') do set "OSVER=%%a"
+echo OS: %OSVER%
+where pwsh >nul 2>&1 && echo PowerShell 7+: detected (pwsh) || echo PowerShell 7+: not found (optional)
 
-:: 2) Enable TLS 1.2 in SChannel (Client + Server)
-echo [2/5] Enabling TLS 1.2 in SChannel (Client/Server)
+:: 1) ExecutionPolicy
+echo [1/10] Set PowerShell ExecutionPolicy
+%PS% -Command "try{Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force -ErrorAction Stop}catch{}"
+%PS% -Command "try{Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force -ErrorAction Stop}catch{}"
+
+:: 2) TLS 1.2
+echo [2/10] Enable TLS 1.2 (Schannel)
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Client" /f >nul
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Client" /v DisabledByDefault /t REG_DWORD /d 0 /f
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Client" /v Enabled /t REG_DWORD /d 1 /f
@@ -24,29 +36,58 @@ reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protoc
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Server" /v DisabledByDefault /t REG_DWORD /d 0 /f
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Server" /v Enabled /t REG_DWORD /d 1 /f
 
-:: 3) Enable .NET strong crypto + default TLS (x64 + x86)
-echo [3/5] Enabling .NET Strong Crypto (x64/x86)
+:: 3) TLS 1.3 (no harm if not supported)
+echo [3/10] Enable TLS 1.3 (if supported)
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.3\Client" /f >nul
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.3\Client" /v DisabledByDefault /t REG_DWORD /d 0 /f
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.3\Client" /v Enabled /t REG_DWORD /d 1 /f
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.3\Server" /f >nul
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.3\Server" /v DisabledByDefault /t REG_DWORD /d 0 /f
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.3\Server" /v Enabled /t REG_DWORD /d 1 /f
+
+:: 4) .NET strong crypto + default TLS
+echo [4/10] Enable .NET Strong Crypto and SystemDefaultTlsVersions
 reg add "HKLM\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" /v SchUseStrongCrypto /t REG_DWORD /d 1 /f
 reg add "HKLM\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" /v SystemDefaultTlsVersions /t REG_DWORD /d 1 /f
 reg add "HKLM\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319" /v SchUseStrongCrypto /t REG_DWORD /d 1 /f
 reg add "HKLM\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319" /v SystemDefaultTlsVersions /t REG_DWORD /d 1 /f
 
-:: 4) Optional: set default proxy creds for web requests (helps behind corporate proxy)
-echo [4/5] Setting default proxy credentials for WebRequests (session test)
-powershell -NoProfile -ExecutionPolicy Bypass -Command "[System.Net.WebRequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials"
+:: 5) WinHTTP proxy sync
+echo [5/10] Sync WinHTTP proxy with system settings
+netsh winhttp import proxy source=ie >nul 2>&1
 
-:: 5) Quick TLS 1.2 connectivity test to GitHub API
-echo [5/5] TLS 1.2 connectivity test to GitHub...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{Invoke-RestMethod 'https://api.github.com' -Headers @{ 'User-Agent'='tdl-updater-test' } -TimeoutSec 15 | Out-Null; Write-Host 'TLS 1.2 test: OK'}catch{Write-Host ('TLS 1.2 test: FAILED - ' + $_.Exception.Message)}"
+:: 6) Unblock-File
+echo [6/10] Unblock downloaded PowerShell scripts (MOTW)
+%PS% -Command "try{Get-ChildItem -Path '%SCRIPT_DIR%' -Recurse -Include *.ps1,*.psm1,*.psd1 -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue}catch{}"
+%PS% -Command "try{Get-ChildItem -Path '%DL_DIR%' -Recurse -Include *.ps1,*.psm1,*.psd1 -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue}catch{}"
+
+:: 7) Time sync
+echo [7/10] Time sync (w32time)
+sc query w32time | find /i "RUNNING" >nul || net start w32time >nul 2>&1
+w32tm /resync >nul 2>&1
+
+:: 8) Proxy creds for current PS session
+echo [8/10] Set default proxy credentials for WebRequests (session test)
+%PS% -Command "[System.Net.WebRequest]::DefaultWebProxy.Credentials = [System.Net.CredentialCache]::DefaultNetworkCredentials"
+
+:: 9) Connectivity tests
+echo [9/10] Connectivity tests (TLS)
+%PS% -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{Invoke-RestMethod 'https://api.github.com' -Headers @{ 'User-Agent'='tdl-easy-fix' } -TimeoutSec 15|Out-Null; 'api.github.com: OK'}catch{'api.github.com: FAIL - ' + $_.Exception.Message}"
+%PS% -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{Invoke-WebRequest  'https://raw.githubusercontent.com' -Headers @{ 'User-Agent'='tdl-easy-fix' } -TimeoutSec 15|Out-Null; 'raw.githubusercontent.com: OK'}catch{'raw.githubusercontent.com: FAIL - ' + $_.Exception.Message}"
+%PS% -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try{Invoke-WebRequest  'https://objects.githubusercontent.com' -Headers @{ 'User-Agent'='tdl-easy-fix' } -TimeoutSec 15|Out-Null; 'objects.githubusercontent.com: OK'}catch{'objects.githubusercontent.com: FAIL - ' + $_.Exception.Message}"
+
+:: 10) Root CA update — last, simplified, never breaks the script
+echo [10/10] Update root certificates (best-effort, safe)
+%PS% -Command " $ErrorActionPreference='SilentlyContinue'; $reachable=$false; try{ $r=Invoke-WebRequest -Uri 'http://ctldl.windowsupdate.com/msdownload/update/v3/static/trustedr/en/authrootstl.cab' -Method Head -TimeoutSec 10; if($r.StatusCode -ge 200 -and $r.StatusCode -lt 400){$reachable=$true} } catch {}; if($reachable){ try{ $p=Start-Process -FilePath 'certutil.exe' -ArgumentList '-generateSSTFromWU','%TMP_SST%' -PassThru -WindowStyle Hidden; if(-not (Wait-Process -Id $p.Id -Timeout 60)){ try{Stop-Process -Id $p.Id -Force}catch{} }; if(Test-Path '%TMP_SST%'){ & certutil -addstore -f root '%TMP_SST%' ^| Out-Null; & certutil -addstore -f ca '%TMP_SST%' ^| Out-Null; Remove-Item '%TMP_SST%' -Force; Write-Host 'Root CA update: OK' } else { Write-Host 'Root CA update: skipped (certutil failed)' } } catch { Write-Host 'Root CA update: skipped (error)' } } else { Write-Host 'Root CA update: skipped (WU unreachable)' } "
 
 echo.
-echo [i] Changes to SChannel/.NET typically require a reboot to fully apply.
+echo [i] Reboot is recommended to fully apply SChannel and .NET changes.
 echo.
-choice /M "Reboot now (recommended)?" /C YN
+choice /C YN /M "Reboot now (recommended)?"
 if errorlevel 2 (
   echo Skipping reboot. Please reboot later.
 ) else (
-  shutdown /r /t 5 /c "Applying TLS 1.2 and .NET strong crypto settings"
+  shutdown /r /t 5 /c "Applying TLS settings and .NET strong crypto"
 )
 
 endlocal

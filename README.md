@@ -7,7 +7,7 @@ Portable GUI and PowerShell scripts to simplify downloading Telegram media from 
 ## Getting started
 
 0. Just go to [Release page](https://github.com/chelaxian/tdl-easy/releases/latest) and downlod and run `tdl_gui.exe`
-   
+   (close and reopen Telegram client after finish downloading with tdl to release database lock)  
 <img width="436" height="532" alt="image" src="https://github.com/user-attachments/assets/a08917ec-52c8-4842-b0d3-d8e3fce616fd" />
 
 
@@ -19,7 +19,7 @@ or if you want use powershell in console:
 3. locate in powershell via `cd C:\PATH\TO\YOUR\FOLDER` command to scripts directory  and run `.\tdl-updater.ps1` to download/update `tdl.exe`
 4. run `.\tdl.exe login` and choose your Telegram ID and say `No` when asking about logout.
 5. run `.\tdl-easy-range.ps1` or `.\tdl-easy-full.ps1` or `.\tdl-easy-single.ps1` and follow interactive wizard to set up and start downloading.
-   
+6. close and reopen Telegram client after finish downloading with tdl to release database lock   
 ---
 
 ## FIXING ERRORS 

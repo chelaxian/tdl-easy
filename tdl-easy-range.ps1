@@ -43,7 +43,8 @@ function Clear-Config {
     # Clear configuration to empty values
     $empty = @{ 
         tdl_path      = "" 
-        telegramUrl   = "" 
+        startUrl      = "" 
+        endUrl        = "" 
         mediaDir      = "" 
         startId       = "" 
         endId         = "" 
@@ -56,7 +57,8 @@ function Clear-Config {
 
 # Default in-memory values
 $tdl_path      = ""
-$telegramUrl   = ""
+$startUrl      = ""
+$endUrl        = ""
 $mediaDir      = ""
 $startId       = ""
 $endId         = ""
@@ -69,7 +71,7 @@ $timeoutSeconds = 120  # timeout for each download in seconds
 $existing = Load-Config
 $haveAnySaved = $false
 if ($existing) {
-    $props = @('tdl_path','telegramUrl','mediaDir','startId','endId','downloadLimit','threads','maxRetries')
+    $props = @('tdl_path','startUrl','endUrl','mediaDir','startId','endId','downloadLimit','threads','maxRetries')
     foreach ($p in $props) {
         if ($existing.$p -and ($existing.$p.ToString().Trim() -ne "")) {
             $haveAnySaved = $true
@@ -77,7 +79,8 @@ if ($existing) {
     }
     if ($haveAnySaved) {
         $tdl_path      = $existing.tdl_path
-        $telegramUrl   = $existing.telegramUrl
+        $startUrl      = $existing.startUrl
+        $endUrl        = $existing.endUrl
         $mediaDir      = $existing.mediaDir
         $startId       = $existing.startId
         $endId         = $existing.endId
@@ -96,7 +99,7 @@ if ($haveAnySaved) {
             $useSaved = $false
             # Clear stored config both on disk and in memory
             Clear-Config
-            $tdl_path = ""; $telegramUrl = ""; $mediaDir = ""
+            $tdl_path = ""; $startUrl = ""; $endUrl = ""; $mediaDir = ""
             $startId   = ""; $endId       = ""; $downloadLimit = ""; $threads = ""; $maxRetries = 1
         }
         default {
@@ -154,19 +157,18 @@ if (-not $useSaved) {
         } while ($true)
         Write-Host "+===============================================================================+" -ForegroundColor DarkGray
 
-        # Telegram base URL input (supports username base, internal base, or topic base)
+        # Telegram message URLs input
         do {
             Write-Host "";
-            Write-Host "+============================= TELEGRAM URL CONFIGURATION ================================" -ForegroundColor DarkGray
-            Write-Host "|Example: https://t.me/c/123/ or https://t.me/abc/ or https://t.me/c/123/456/" -ForegroundColor Gray
+            Write-Host "+============================= TELEGRAM MESSAGE URLS ====================================" -ForegroundColor DarkGray
+            Write-Host "|Example: https://t.me/c/12345678/1234 or https://t.me/username/1234" -ForegroundColor Gray
             Write-Host "+----------------------------------------------------------------------------------------+" -ForegroundColor DarkGray
-            Write-Host "Copy-Paste Telegram channel/group/topic base URL (no message index in the end)"
+            Write-Host "Copy-Paste URL of the FIRST message to download"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
                 Write-Emoji "[x] Error: URL cannot be empty." "Red"
                 continue
             }
-            if (-not $input.EndsWith("/")) { $input = "$input/" }
 
             try {
                 $parsedUri = [uri]$input
@@ -180,65 +182,88 @@ if (-not $useSaved) {
                 continue
             }
 
+            # Extract message ID from URL
             $segments = $parsedUri.AbsolutePath.Trim('/').Split('/')
-            $isValidBase = $false
-
-            if ($segments.Length -eq 1 -and $segments[0] -match '^[A-Za-z0-9_]{5,32}$') {
-                # public username
-                $isValidBase = $true
-            } elseif ($segments.Length -eq 2 -and $segments[0] -eq 'c' -and $segments[1] -match '^\d+$') {
-                # internal channel base
-                $isValidBase = $true
+            $messageId = $null
+            
+            if ($segments.Length -eq 2 -and $segments[0] -match '^[A-Za-z0-9_]{5,32}$' -and $segments[1] -match '^\d+$') {
+                # public username format: https://t.me/username/1234
+                $messageId = [int]$segments[1]
             } elseif ($segments.Length -eq 3 -and $segments[0] -eq 'c' -and $segments[1] -match '^\d+$' -and $segments[2] -match '^\d+$') {
-                # topic base
-                $isValidBase = $true
+                # internal channel format: https://t.me/c/12345678/1234
+                $messageId = [int]$segments[2]
+            } elseif ($segments.Length -eq 4 -and $segments[0] -eq 'c' -and $segments[1] -match '^\d+$' -and $segments[2] -match '^\d+$' -and $segments[3] -match '^\d+$') {
+                # topic format: https://t.me/c/12345678/166/1234
+                $messageId = [int]$segments[3]
             }
 
-            if (-not $isValidBase) {
-                Write-Emoji "[x] Error: URL должен быть https://t.me/c/12345678/ или https://t.me/username/ или topic base https://t.me/c/2267448302/166/." "Red"
+            if (-not $messageId) {
+                Write-Emoji "[x] Error: Could not extract message ID from URL. Format should be:" "Red"
+                Write-Emoji "    https://t.me/c/12345678/1234 or https://t.me/username/1234" "Red"
                 continue
             }
 
-            $telegramUrl = $input
+            $startUrl = $input
+            $startId = $messageId
             break
         } while ($true)
         Write-Host "+===============================================================================+" -ForegroundColor DarkGray
 
-        # Index range configuration
         do {
             Write-Host "";
-            Write-Host "+============================= INDEX RANGE CONFIGURATION =================================" -ForegroundColor DarkGray
-            Write-Host "| Defaults: startId=1, endId=100 (endId forced >= startId)" -ForegroundColor Gray
+            Write-Host "+============================= END MESSAGE URL ==========================================" -ForegroundColor DarkGray
+            Write-Host "|Example: https://t.me/c/12345678/1234 or https://t.me/username/1234" -ForegroundColor Gray
             Write-Host "+----------------------------------------------------------------------------------------+" -ForegroundColor DarkGray
-            Write-Host "Enter the starting message index (positive integer) [default: 1]"
+            Write-Host "Copy-Paste URL of the LAST message to download"
             $input = Read-Host
             if ([string]::IsNullOrWhiteSpace($input)) {
-                $startId = 1
-                break
+                Write-Emoji "[x] Error: URL cannot be empty." "Red"
+                continue
             }
-            if ([int]::TryParse($input, [ref]$startId) -and $startId -gt 0) {
-                break
-            }
-            Write-Emoji "[x] Error: Please enter a valid positive integer for the starting index." "Red"
-        } while ($true)
 
-        do {
-            Write-Host "Enter the ending message index (must be >= $startId) [default: $($startId+99)]"
-            $input = Read-Host
-            if ([string]::IsNullOrWhiteSpace($input)) {
-                $endId = $startId + 99
-                break
+            try {
+                $parsedUri = [uri]$input
+            } catch {
+                Write-Emoji "[x] Error: Invalid URL format." "Red"
+                continue
             }
-            if ([int]::TryParse($input, [ref]$endId) -and $endId -ge $startId) {
-                break
-            }
-            Write-Emoji "[x] Error: Please enter a valid integer >= $startId for the ending index." "Red"
-        } while ($true)
 
-        if ($endId -lt $startId) {
-            Write-Emoji "[x] Error: ending index must be >= starting index." "Red"
-            exit
-        }
+            if ($parsedUri.Scheme -notin @('http', 'https') -or $parsedUri.Host -ne 't.me') {
+                Write-Emoji "[x] Error: URL must be https://t.me/..." "Red"
+                continue
+            }
+
+            # Extract message ID from URL
+            $segments = $parsedUri.AbsolutePath.Trim('/').Split('/')
+            $messageId = $null
+            
+            if ($segments.Length -eq 2 -and $segments[0] -match '^[A-Za-z0-9_]{5,32}$' -and $segments[1] -match '^\d+$') {
+                # public username format: https://t.me/username/1234
+                $messageId = [int]$segments[1]
+            } elseif ($segments.Length -eq 3 -and $segments[0] -eq 'c' -and $segments[1] -match '^\d+$' -and $segments[2] -match '^\d+$') {
+                # internal channel format: https://t.me/c/12345678/1234
+                $messageId = [int]$segments[2]
+            } elseif ($segments.Length -eq 4 -and $segments[0] -eq 'c' -and $segments[1] -match '^\d+$' -and $segments[2] -match '^\d+$' -and $segments[3] -match '^\d+$') {
+                # topic format: https://t.me/c/12345678/166/1234
+                $messageId = [int]$segments[3]
+            }
+
+            if (-not $messageId) {
+                Write-Emoji "[x] Error: Could not extract message ID from URL. Format should be:" "Red"
+                Write-Emoji "    https://t.me/c/12345678/1234 or https://t.me/username/1234" "Red"
+                continue
+            }
+
+            if ($messageId -lt $startId) {
+                Write-Emoji "[x] Error: End message ID ($messageId) must be >= start message ID ($startId)" "Red"
+                continue
+            }
+
+            $endUrl = $input
+            $endId = $messageId
+            break
+        } while ($true)
+        Write-Host "+===============================================================================+" -ForegroundColor DarkGray
 
         # Concurrency settings
         do {
@@ -288,7 +313,8 @@ if (-not $useSaved) {
         # Persist all collected values atomically
         $toSave = @{ 
             tdl_path      = $tdl_path
-            telegramUrl   = $telegramUrl
+            startUrl      = $startUrl
+            endUrl        = $endUrl
             mediaDir      = $mediaDir
             startId       = $startId
             endId         = $endId
@@ -308,6 +334,37 @@ $logFile = "${tdl_path}\download_log.txt"
 $processedFile = "${mediaDir}\processed.txt"
 $errorFile = "${mediaDir}\error_index.txt"
 
+# Extract base URL and channel identifier from start URL
+function Get-BaseUrl {
+    param([string]$messageUrl)
+    
+    try {
+        $parsedUri = [uri]$messageUrl
+        $segments = $parsedUri.AbsolutePath.Trim('/').Split('/')
+        
+        if ($segments.Length -eq 2 -and $segments[0] -match '^[A-Za-z0-9_]{5,32}$') {
+            # public username format: https://t.me/username/1234
+            return "https://t.me/$($segments[0])/"
+        } elseif ($segments.Length -eq 3 -and $segments[0] -eq 'c' -and $segments[1] -match '^\d+$') {
+            # internal channel format: https://t.me/c/12345678/1234
+            return "https://t.me/c/$($segments[1])/"
+        } elseif ($segments.Length -eq 4 -and $segments[0] -eq 'c' -and $segments[1] -match '^\d+$' -and $segments[2] -match '^\d+$') {
+            # topic format: https://t.me/c/12345678/166/1234
+            return "https://t.me/c/$($segments[1])/$($segments[2])/"
+        }
+    } catch {
+        return $null
+    }
+    return $null
+}
+
+# Extract base URL from start URL
+$telegramUrl = Get-BaseUrl $startUrl
+if ([string]::IsNullOrWhiteSpace($telegramUrl)) {
+    Write-Emoji "[x] Error: Failed to extract base URL from start URL: $startUrl" "Red"
+    exit
+}
+
 # Extract channel/group identifier from base URL
 $channelId = $null
 if ($telegramUrl -match '^https?://t\.me/c/(\d+)(?:/\d+)?/$') {
@@ -317,21 +374,7 @@ if ($telegramUrl -match '^https?://t\.me/c/(\d+)(?:/\d+)?/$') {
 }
 if ([string]::IsNullOrWhiteSpace($channelId)) {
     Write-Emoji "[x] Error: Failed to extract channel/group identifier from URL: $telegramUrl" "Red"
-    while ($true) {
-        $resp = Read-Host "Enter Telegram base URL again in form https://t.me/c/12345678/ or https://t.me/username/ or topic base https://t.me/c/2267448302/166/ or type 'quit' to exit"
-        if ($resp -eq 'quit') { exit }
-        if ($resp -match '^https?://t\.me/c/(\d+)(?:/\d+)?/$') {
-            $telegramUrl = $resp
-            $channelId = $Matches[1]
-            break
-        } elseif ($resp -match '^https?://t\.me/([A-Za-z0-9_]{5,32})/$') {
-            $telegramUrl = $resp
-            $channelId = $Matches[1]
-            break
-        } else {
-            Write-Emoji "[x] Invalid format, should be https://t.me/c/12345678/ or https://t.me/c/2267448302/166/ or https://t.me/username/." "Red"
-        }
-    }
+    exit
 }
 
 # Check for tdl.exe in the specified path

@@ -56,12 +56,10 @@ MENU_TEXT = {
         'tdl_path_prompt': 'Path to TDL:',
         'media_dir_title': 'Media directory',
         'media_dir_prompt': 'Directory to save into:',
-        'base_url_title': 'Base Telegram URL',
-        'base_url_prompt': 'Enter base link (https://t.me/c/12345678/ or https://t.me/username/):',
-        'start_index_title': 'Start Index',
-        'start_index_prompt': 'Enter startId (positive integer, default 1):',
-        'end_index_title': 'End Index',
-        'end_index_prompt': 'Enter endId (>= {start}, default {default}):',
+        'start_url_title': 'First Message URL',
+        'start_url_prompt': 'Enter URL of the FIRST message to download (https://t.me/c/12345678/1234 or https://t.me/username/1234):',
+        'end_url_title': 'Last Message URL',
+        'end_url_prompt': 'Enter URL of the LAST message to download (https://t.me/c/12345678/1234 or https://t.me/username/1234):',
         'task_limit_title': 'Task Limit',
         'task_limit_prompt': 'Max concurrent download tasks (1-10) [default 2]:',
         'threads_title': 'Threads',
@@ -117,12 +115,10 @@ MENU_TEXT = {
         'tdl_path_prompt': 'Путь к TDL:',
         'media_dir_title': 'Папка для медиа',
         'media_dir_prompt': 'Папка для сохранения:',
-        'base_url_title': 'Базовый URL Telegram',
-        'base_url_prompt': 'Введите базовую ссылку (https://t.me/c/12345678/ или https://t.me/username/):',
-        'start_index_title': 'Начальный индекс',
-        'start_index_prompt': 'Введите startId (положительное число, по умолчанию 1):',
-        'end_index_title': 'Конечный индекс',
-        'end_index_prompt': 'Введите endId (>= {start}, по умолчанию {default}):',
+        'start_url_title': 'URL первого сообщения',
+        'start_url_prompt': 'Введите URL ПЕРВОГО сообщения для скачивания (https://t.me/c/12345678/1234 или https://t.me/username/1234):',
+        'end_url_title': 'URL последнего сообщения',
+        'end_url_prompt': 'Введите URL ПОСЛЕДНЕГО сообщения для скачивания (https://t.me/c/12345678/1234 или https://t.me/username/1234):',
         'task_limit_title': 'Лимит задач',
         'task_limit_prompt': 'Макс. одновременных задач загрузки (1-10) [по умолчанию 2]:',
         'threads_title': 'Потоки',
@@ -153,6 +149,80 @@ MENU_TEXT = {
 # ==============================================================================
 # Utility functions
 # ==============================================================================
+
+def extract_message_id_from_url(url):
+    """
+    Extract message ID from Telegram URL.
+    Supports formats:
+    - https://t.me/username/1234
+    - https://t.me/c/12345678/1234
+    - https://t.me/c/12345678/166/1234 (topic)
+    """
+    try:
+        # Remove trailing slash if present
+        url = url.rstrip('/')
+        
+        # Parse URL
+        if not url.startswith('http'):
+            return None
+            
+        # Extract path segments
+        if '/t.me/' in url:
+            path = url.split('/t.me/')[1]
+        else:
+            return None
+            
+        segments = path.split('/')
+        
+        if len(segments) == 2 and segments[0].replace('_', '').isalnum() and segments[1].isdigit():
+            # public username format: https://t.me/username/1234
+            return int(segments[1])
+        elif len(segments) == 3 and segments[0] == 'c' and segments[1].isdigit() and segments[2].isdigit():
+            # internal channel format: https://t.me/c/12345678/1234
+            return int(segments[2])
+        elif len(segments) == 4 and segments[0] == 'c' and segments[1].isdigit() and segments[2].isdigit() and segments[3].isdigit():
+            # topic format: https://t.me/c/12345678/166/1234
+            return int(segments[3])
+            
+    except (ValueError, IndexError):
+        pass
+    
+    return None
+
+def extract_base_url_from_message_url(url):
+    """
+    Extract base URL from message URL.
+    """
+    try:
+        # Remove trailing slash if present
+        url = url.rstrip('/')
+        
+        # Parse URL
+        if not url.startswith('http'):
+            return None
+            
+        # Extract path segments
+        if '/t.me/' in url:
+            path = url.split('/t.me/')[1]
+        else:
+            return None
+            
+        segments = path.split('/')
+        
+        if len(segments) == 2 and segments[0].replace('_', '').isalnum() and segments[1].isdigit():
+            # public username format: https://t.me/username/1234
+            return f"https://t.me/{segments[0]}/"
+        elif len(segments) == 3 and segments[0] == 'c' and segments[1].isdigit() and segments[2].isdigit():
+            # internal channel format: https://t.me/c/12345678/1234
+            return f"https://t.me/c/{segments[1]}/"
+        elif len(segments) == 4 and segments[0] == 'c' and segments[1].isdigit() and segments[2].isdigit() and segments[3].isdigit():
+            # topic format: https://t.me/c/12345678/166/1234
+            return f"https://t.me/c/{segments[1]}/{segments[2]}/"
+            
+    except (ValueError, IndexError):
+        pass
+    
+    return None
 
 def resource_path(rel):
     """
@@ -546,7 +616,8 @@ def download_range():
             if config:
                 tdl_path = config.get('tdl_path', default_tdl)
                 media_dir = config.get('mediaDir', launcher_dir)
-                base_link = config.get('telegramUrl', '')
+                start_url = config.get('startUrl', '')
+                end_url = config.get('endUrl', '')
                 start_id = config.get('startId', 1)
                 end_id = config.get('endId', start_id + 99)
                 dl_limit = config.get('downloadLimit', 2)
@@ -563,7 +634,8 @@ def download_range():
                 # Use saved parameters and continue
                 state = {
                     'tdl_path': tdl_path,
-                    'telegramUrl': base_link,
+                    'startUrl': start_url,
+                    'endUrl': end_url,
                     'mediaDir': media_dir,
                     'startId': start_id,
                     'endId': end_id,
@@ -598,40 +670,51 @@ def download_range():
         messagebox.showerror(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['media_dir_not_found'].format(path=media_dir))
         return
 
+    # Get first message URL
     while True:
-        base_link = simpledialog.askstring(
-            MENU_TEXT[LANG]['base_url_title'],
-            MENU_TEXT[LANG]['base_url_prompt'],
+        start_url = simpledialog.askstring(
+            MENU_TEXT[LANG]['start_url_title'],
+            MENU_TEXT[LANG]['start_url_prompt'],
             parent=MAIN_ROOT
         )
-        if not base_link:
+        if not start_url:
             return
-        base_link = base_link.strip()
-        if not base_link.endswith('/'):
-            base_link += '/'
-        if (re.match(r"^https?://t\.me/c/\d+/$", base_link)
-                or re.match(r"^https?://t\.me/c/\d+/\d+/$", base_link)
-                or re.match(r"^https?://t\.me/[A-Za-z0-9_]{5,32}/$", base_link)):
-            break
-        messagebox.showwarning(MENU_TEXT[LANG]['invalid_format'], MENU_TEXT[LANG]['url_base_format'])
-
-    while True:
-        start_id_dlg = IntegerInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['start_index_title'],
-                                          MENU_TEXT[LANG]['start_index_prompt'],
-                                          initialvalue=1, minvalue=1)
-        start_id = start_id_dlg.result
+        start_url = start_url.strip()
+        
+        # Extract message ID from URL
+        start_id = extract_message_id_from_url(start_url)
         if start_id is None:
+            messagebox.showwarning(MENU_TEXT[LANG]['invalid_format'], MENU_TEXT[LANG]['url_message_format'])
+            continue
+        break
+
+    # Get last message URL
+    while True:
+        end_url = simpledialog.askstring(
+            MENU_TEXT[LANG]['end_url_title'],
+            MENU_TEXT[LANG]['end_url_prompt'],
+            parent=MAIN_ROOT
+        )
+        if not end_url:
             return
-        end_id_dlg = IntegerInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['end_index_title'],
-                                        MENU_TEXT[LANG]['end_index_prompt'].format(start=start_id, default=start_id+99),
-                                        initialvalue=start_id+99, minvalue=start_id)
-        end_id = end_id_dlg.result
+        end_url = end_url.strip()
+        
+        # Extract message ID from URL
+        end_id = extract_message_id_from_url(end_url)
         if end_id is None:
-            return
+            messagebox.showwarning(MENU_TEXT[LANG]['invalid_format'], MENU_TEXT[LANG]['url_message_format'])
+            continue
+            
         if end_id < start_id:
             messagebox.showwarning(MENU_TEXT[LANG]['error'], MENU_TEXT[LANG]['endid_error'])
             continue
         break
+
+    # Extract base URL from start URL for compatibility with PowerShell script
+    base_link = extract_base_url_from_message_url(start_url)
+    if not base_link:
+        messagebox.showerror(MENU_TEXT[LANG]['error'], 'Failed to extract base URL from start URL')
+        return
 
     while True:
         dl_limit_dlg = IntegerInputDialog(MAIN_ROOT, MENU_TEXT[LANG]['task_limit_title'],
@@ -654,7 +737,8 @@ def download_range():
 
     state = {
         'tdl_path': tdl_path,
-        'telegramUrl': base_link,
+        'startUrl': start_url,
+        'endUrl': end_url,
         'mediaDir': media_dir,
         'startId': start_id,
         'endId': end_id,
